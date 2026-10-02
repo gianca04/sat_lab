@@ -100,7 +100,10 @@ class MqttWorker:
         ).scalars().all()
 
         if not rules:
+            logger.debug(f"ℹ️ [RULES] No active maintenance rules found for {equipment_tag}")
             return
+            
+        logger.info(f"⚙️ [RULES] Evaluating {len(rules)} active rules for {equipment_tag}")
 
         for rule in rules:
             # Calculate the real accumulated metric for this trigger type
@@ -110,18 +113,21 @@ class MqttWorker:
                 trigger_type=rule.trigger_type,
             )
 
-            logger.debug(
-                "Rule #%d [%s] asset=%s trigger=%s current=%d threshold=%d",
-                rule.id, rule.name, equipment_tag,
-                rule.trigger_type, current_value, rule.threshold_value,
+            logger.info(
+                f"🧮 [EVALUATE] Rule #{rule.id} [{rule.name}] | Trigger: {rule.trigger_type.value} | Current: {current_value} | Threshold: {rule.threshold_value}"
             )
 
-            MaintenanceService.generate_maintenance_alert(
+            alert = MaintenanceService.generate_maintenance_alert(
                 db=db,
                 rule=rule,
                 current_value=current_value,
                 notify=True,
             )
+            
+            if alert:
+                logger.info(f"🚨 [ALERT GENERATED] Rule #{rule.id} triggered alert #{alert.id}")
+            else:
+                logger.debug(f"✅ [RULE OK] Rule #{rule.id} is within limits")
 
     def _on_connect(self, client, userdata, flags, reason_code, properties=None):
         if reason_code == 0:
@@ -142,7 +148,10 @@ class MqttWorker:
         """
         try:
             tokens = msg.topic.split("/")
+            logger.info(f"📥 [MQTT RECV] Topic: {msg.topic} | Payload: {msg.payload.decode('utf-8')}")
+            
             if len(tokens) < 5:
+                logger.warning(f"⚠️ [MQTT] Topic format invalid. Expected at least 5 levels, got {len(tokens)}")
                 return
 
             node_id = tokens[2]
@@ -163,6 +172,8 @@ class MqttWorker:
             else:
                 event_time = datetime.now(timezone.utc)
 
+            logger.info(f"🔍 [MQTT PARSED] Node: {node_id}, Device: {device_id}, Asset: {equipment_tag}, Metric: {metric_name}, Value: {value}")
+
             # Process in thread-safe DB session
             db: Session = SessionLocal()
             try:
@@ -179,6 +190,11 @@ class MqttWorker:
                     value=value,
                     event_time=event_time,
                 )
+
+                if status_entry:
+                    logger.info(f"🔄 [STATE TRANSITION] {equipment_tag} changed state to {status_entry.status.value}")
+                else:
+                    logger.debug(f"ℹ️ [NO TRANSITION] {equipment_tag} state unchanged.")
 
                 # 3. Evaluate maintenance rules — only on status transitions
                 self._evaluate_maintenance_rules(
