@@ -1,0 +1,616 @@
+@import "tailwindcss";
+
+/* ============================================================
+   GRAFANA DARK THEME — Token-for-token faithful replication
+   Source: grafana/grafana packages/grafana-ui/src/themes/dark.ts
+   ============================================================ */
+
+@theme {
+  /* --- Canvas (App background layers) --- */
+  --color-bg-canvas:        #111217;   /* grafana: background.canvas */
+  --color-bg-primary:       #181b1f;   /* grafana: background.primary — panels, sidebar */
+  --color-bg-secondary:     #1e2228;   /* grafana: background.secondary — table header, inputs */
+  --color-bg-elevated:      #212733;   /* grafana: background elevated hover on list items */
+
+  /* --- Borders --- */
+  --color-border-weak:      #1e2228;   /* grafana: border.weak */
+  --color-border-medium:    #22252b;   /* grafana: border.medium — default */
+  --color-border-strong:    #2c3235;   /* grafana: border.strong — focused inputs */
+
+  /* --- Text --- */
+  --color-text-primary:     #d8d9da;   /* grafana: text.primary */
+  --color-text-secondary:   #8e8e93;   /* grafana: text.secondary — labels, muted */
+  --color-text-disabled:    #52545b;   /* grafana: text.disabled */
+  --color-text-link:        #6e9fff;   /* grafana: text.link */
+
+  /* --- Interactive / Actions --- */
+  --color-primary:          #3274d9;   /* grafana: primary.main — buttons, highlights */
+  --color-primary-hover:    #2761b8;   /* grafana: primary.shade */
+  --color-primary-fg:       #ffffff;
+
+  /* --- Status / Alert colors (exact Grafana values) --- */
+  --color-success:          #73bf69;   /* grafana: success.main */
+  --color-warning:          #fade2a;   /* grafana: warning.main */
+  --color-error:            #f2495c;   /* grafana: error.main */
+  --color-info:             #5794f2;   /* grafana: info.main */
+  --color-orange:           #ff7800;   /* Grafana logo orange */
+
+  /* --- shadcn compat aliases --- */
+  --color-background:       #111217;
+  --color-foreground:       #d8d9da;
+  --color-card:             #181b1f;
+  --color-card-foreground:  #d8d9da;
+  --color-popover:          #1e2228;
+  --color-popover-foreground: #d8d9da;
+  --color-muted:            #22252b;
+  --color-muted-foreground: #8e8e93;
+  --color-accent:           #1e2228;
+  --color-accent-foreground: #d8d9da;
+  --color-secondary:        #22252b;
+  --color-secondary-foreground: #d8d9da;
+  --color-border:           #22252b;
+  --color-input:            #1e2228;
+  --color-ring:             #3274d9;
+  --color-destructive:      #f2495c;
+  --color-destructive-foreground: #ffffff;
+  --color-primary-foreground: #ffffff;
+
+  /* --- Grafana radii (very small — crisp, industrial) --- */
+  --radius-sm:  1px;
+  --radius-md:  2px;
+  --radius-lg:  4px;
+
+  /* --- Grafana Font Stack (Inter, same as Grafana OSS) --- */
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* ============================================================
+   GRAFANA CSS RESET & BASE
+   ============================================================ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  border-color: #22252b;
+}
+
+html {
+  font-size: 13px;   /* Grafana base: 13px (not 16px) */
+  line-height: 1.45; /* Grafana lineHeight.xs equivalent */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: #111217;
+  color: #d8d9da;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+/* ============================================================
+   GRAFANA SCROLLBAR — thin and subtle
+   ============================================================ */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: #22252b;
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: #2c3235;
+}
+
+/* ============================================================
+   GRAFANA SIDEBAR — exact left nav styles
+   ============================================================ */
+.gf-sidebar {
+  width: 200px;
+  background: #181b1f;
+  border-right: 1px solid #22252b;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.gf-sidebar-logo {
+  height: 40px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid #22252b;
+}
+
+.gf-sidebar-logo-icon {
+  width: 24px;
+  height: 24px;
+  background: #ff7800;
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.gf-sidebar-logo-text {
+  font-size: 12px;
+  font-weight: 500;
+  color: #d8d9da;
+}
+
+.gf-nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.gf-nav-section-label {
+  padding: 0 12px;
+  margin: 12px 0 4px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #52545b;
+}
+
+.gf-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 400;
+  color: #8e8e93;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  transition: background 0.1s, color 0.1s;
+  text-decoration: none;
+}
+
+.gf-nav-item:hover {
+  background: #1e2228;
+  color: #d8d9da;
+}
+
+.gf-nav-item.active {
+  background: #22252b;
+  color: #ffffff;
+  font-weight: 500;
+  border-left-color: #ff7800;
+}
+
+/* ============================================================
+   GRAFANA TOPBAR
+   ============================================================ */
+.gf-topbar {
+  height: 40px;
+  background: #181b1f;
+  border-bottom: 1px solid #22252b;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.gf-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #8e8e93;
+}
+
+.gf-breadcrumb-current {
+  color: #d8d9da;
+  font-weight: 500;
+}
+
+.gf-breadcrumb-sep {
+  color: #52545b;
+  font-size: 11px;
+}
+
+.gf-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ============================================================
+   GRAFANA SEARCH BAR
+   ============================================================ */
+.gf-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.gf-search-icon {
+  position: absolute;
+  left: 8px;
+  color: #52545b;
+  width: 12px;
+  height: 12px;
+  pointer-events: none;
+}
+
+.gf-search-input {
+  height: 24px;
+  width: 180px;
+  background: #111217;
+  border: 1px solid #2c3235;
+  border-radius: 2px;
+  padding: 0 8px 0 26px;
+  font-size: 12px;
+  font-family: inherit;
+  color: #d8d9da;
+  outline: none;
+  transition: border-color 0.1s;
+}
+
+.gf-search-input::placeholder {
+  color: #52545b;
+}
+
+.gf-search-input:focus {
+  border-color: #3274d9;
+}
+
+.gf-search-shortcut {
+  position: absolute;
+  right: 6px;
+  font-size: 10px;
+  color: #52545b;
+  pointer-events: none;
+}
+
+/* ============================================================
+   GRAFANA PANELS / CARDS
+   ============================================================ */
+.gf-panel {
+  background: #181b1f;
+  border: 1px solid #22252b;
+  border-radius: 2px;
+}
+
+.gf-panel-header {
+  height: 32px;
+  padding: 0 12px;
+  border-bottom: 1px solid #22252b;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #181b1f;
+}
+
+.gf-panel-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: #d8d9da;
+}
+
+.gf-panel-body {
+  padding: 12px;
+}
+
+/* ============================================================
+   GRAFANA STAT PANEL (small numeric displays)
+   ============================================================ */
+.gf-stat {
+  background: #181b1f;
+  border: 1px solid #22252b;
+  border-radius: 2px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gf-stat-label {
+  font-size: 11px;
+  color: #8e8e93;
+  font-weight: 400;
+  text-transform: none;
+}
+
+.gf-stat-value {
+  font-size: 20px;
+  font-weight: 600;
+  color: #d8d9da;
+  line-height: 1.2;
+}
+
+.gf-stat-value-sm {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* ============================================================
+   GRAFANA TABLE
+   ============================================================ */
+.gf-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.gf-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.gf-table thead {
+  border-bottom: 1px solid #22252b;
+  background: #181b1f;
+}
+
+.gf-table th {
+  padding: 4px 12px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 500;
+  color: #8e8e93;
+  height: 28px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.gf-table th:hover {
+  color: #d8d9da;
+}
+
+.gf-table tbody tr {
+  border-bottom: 1px solid #22252b;
+  transition: background 0.08s;
+}
+
+.gf-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.gf-table tbody tr:hover {
+  background: #1e2228;
+}
+
+.gf-table td {
+  padding: 5px 12px;
+  color: #d8d9da;
+  font-size: 13px;
+  height: 32px;
+}
+
+.gf-table td.mono {
+  font-size: 12px;
+}
+
+.gf-table td.muted {
+  color: #8e8e93;
+}
+
+.gf-table td.link {
+  color: #6e9fff;
+  cursor: pointer;
+}
+
+.gf-table td.link:hover {
+  text-decoration: underline;
+}
+
+/* ============================================================
+   GRAFANA BUTTON VARIANTS
+   ============================================================ */
+.gf-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border-radius: 2px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  padding: 0 10px;
+  height: 24px;
+  white-space: nowrap;
+  transition: background 0.1s, border-color 0.1s;
+  outline: none;
+}
+
+.gf-btn:focus-visible {
+  outline: 2px solid #3274d9;
+  outline-offset: 2px;
+}
+
+.gf-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.gf-btn-primary {
+  background: #3274d9;
+  color: #ffffff;
+  border-color: transparent;
+}
+
+.gf-btn-primary:hover:not(:disabled) {
+  background: #2761b8;
+}
+
+.gf-btn-secondary {
+  background: transparent;
+  color: #d8d9da;
+  border-color: #2c3235;
+}
+
+.gf-btn-secondary:hover:not(:disabled) {
+  background: #22252b;
+  border-color: #3274d9;
+}
+
+.gf-btn-ghost {
+  background: transparent;
+  color: #8e8e93;
+  border-color: transparent;
+}
+
+.gf-btn-ghost:hover:not(:disabled) {
+  background: #22252b;
+  color: #d8d9da;
+}
+
+/* ============================================================
+   GRAFANA TABS (bottom of panel)
+   ============================================================ */
+.gf-tabs {
+  height: 32px;
+  border-top: 1px solid #22252b;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: #111217;
+  padding: 0 12px;
+}
+
+.gf-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  padding: 0 12px 0 0;
+  margin-right: 12px;
+  font-size: 12px;
+  color: #8e8e93;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.1s;
+}
+
+.gf-tab:hover {
+  color: #d8d9da;
+}
+
+.gf-tab.active {
+  color: #d8d9da;
+  border-bottom-color: #ff7800;
+  font-weight: 500;
+}
+
+/* ============================================================
+   GRAFANA STATUS BADGES
+   ============================================================ */
+.gf-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  height: 18px;
+  border-radius: 2px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid transparent;
+}
+
+.gf-badge-online {
+  color: #73bf69;
+  background: rgba(115, 191, 105, 0.10);
+  border-color: rgba(115, 191, 105, 0.25);
+}
+
+.gf-badge-offline {
+  color: #8e8e93;
+  background: rgba(142, 142, 147, 0.10);
+  border-color: rgba(142, 142, 147, 0.25);
+}
+
+.gf-badge-warning {
+  color: #fade2a;
+  background: rgba(250, 222, 42, 0.10);
+  border-color: rgba(250, 222, 42, 0.25);
+}
+
+.gf-badge-error {
+  color: #f2495c;
+  background: rgba(242, 73, 92, 0.10);
+  border-color: rgba(242, 73, 92, 0.25);
+}
+
+.gf-badge-neutral {
+  color: #8e8e93;
+  background: rgba(30, 34, 40, 0.80);
+  border-color: #2c3235;
+}
+
+/* ============================================================
+   GRAFANA INPUT
+   ============================================================ */
+.gf-input {
+  height: 28px;
+  width: 100%;
+  background: #111217;
+  border: 1px solid #2c3235;
+  border-radius: 2px;
+  padding: 0 10px;
+  font-size: 13px;
+  font-family: inherit;
+  color: #d8d9da;
+  outline: none;
+  transition: border-color 0.1s;
+}
+
+.gf-input::placeholder {
+  color: #52545b;
+}
+
+.gf-input:focus {
+  border-color: #3274d9;
+}
+
+.gf-input[readonly] {
+  background: #1e2228;
+  color: #8e8e93;
+  cursor: default;
+}
+
+.gf-input:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ============================================================
+   GRAFANA FORM LABEL
+   ============================================================ */
+.gf-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: #8e8e93;
+  margin-bottom: 4px;
+}

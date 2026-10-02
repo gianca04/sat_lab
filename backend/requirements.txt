@@ -1,0 +1,27 @@
+# FastAPI Web Framework & ASGI Server
+fastapi>=0.115.0,<1.0.0
+uvicorn[standard]>=0.30.0
+
+# Database & ORM
+SQLAlchemy>=2.0.0,<3.0.0
+psycopg2-binary>=2.9.9
+
+# Data Validation & Settings Management
+pydantic>=2.7.0,<3.0.0
+pydantic-settings>=2.2.0
+email-validator>=2.0.0
+
+# Environment & Form Handling
+python-dotenv>=1.0.0
+python-multipart>=0.0.9
+
+# Authentication & Security
+pyjwt>=2.8.0
+bcrypt>=4.0.0
+
+# Industrial Protocols & Messaging
+paho-mqtt>=2.1.0
+
+# Testing & Quality
+pytest>=8.0.0
+
