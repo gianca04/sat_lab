@@ -19,11 +19,15 @@ from models import (
     Node,
     SparkplugLifecycleEvent,
     TypeEquipment,
+    AssetMeter,
+    AlertStatus,
 )
 from schemas import (
     DeviceRead,
     EquipmentRead,
+    MaintenanceLogCreate,
     MaintenanceLogRead,
+    MaintenanceLogUpdate,
     MaintenanceRuleCreate,
     MaintenanceRuleRead,
     MaintenanceRuleUpdate,
@@ -173,6 +177,50 @@ def list_maintenance_rules(
 
 # ─── Maintenance Logs ─────────────────────────────────────────────────────────
 
+@router.post(
+    "/maintenance/logs",
+    response_model=MaintenanceLogRead,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a maintenance log and resolve open alerts",
+)
+def create_maintenance_log(
+    log_in: MaintenanceLogCreate,
+    db: Session = Depends(get_db),
+):
+    """
+    Creates a maintenance log. Automatically takes a snapshot of the asset's meter
+    and resolves any PENDING or ACKNOWLEDGED alerts for that asset.
+    """
+    log_data = log_in.model_dump()
+    log = MaintenanceLog(**log_data)
+    
+    # 1. Snapshot the AssetMeter (Odometers)
+    meter = db.query(AssetMeter).filter_by(
+        asset_type=log.asset_type, 
+        asset_id=log.asset_id
+    ).first()
+    
+    if meter:
+        log.hours_at_execution = meter.total_hours
+        log.cycles_at_execution = meter.total_cycles
+        log.startups_at_execution = meter.total_startups
+        
+    db.add(log)
+    
+    # 2. Resolve open alerts for this asset
+    open_alerts = db.query(MaintenanceAlert).filter(
+        MaintenanceAlert.asset_type == log.asset_type,
+        MaintenanceAlert.asset_id == log.asset_id,
+        MaintenanceAlert.status.in_([AlertStatus.PENDING, AlertStatus.ACKNOWLEDGED])
+    ).all()
+    
+    for alert in open_alerts:
+        alert.status = AlertStatus.RESOLVED
+
+    db.commit()
+    db.refresh(log)
+    return log
+
 @router.get("/maintenance/logs", response_model=List[MaintenanceLogRead])
 def list_maintenance_logs(
     q: Optional[str] = Query(None, description="Filter by asset_id or technician"),
@@ -200,6 +248,69 @@ def list_maintenance_logs(
             )
         )
     return qs.order_by(MaintenanceLog.created_at.desc()).offset(offset).limit(limit).all()
+
+
+@router.get(
+    "/maintenance/logs/{log_id}",
+    response_model=MaintenanceLogRead,
+    summary="Get a single maintenance log by ID",
+)
+def get_maintenance_log(
+    log_id: int,
+    db: Session = Depends(get_db),
+):
+    log = db.query(MaintenanceLog).filter(MaintenanceLog.id == log_id).first()
+    if not log:
+        raise HTTPException(status_code=404, detail=f"Maintenance log {log_id} not found")
+    return log
+
+
+@router.patch(
+    "/maintenance/logs/{log_id}",
+    response_model=MaintenanceLogRead,
+    summary="Partially update a maintenance log",
+)
+def update_maintenance_log(
+    log_id: int,
+    log_in: MaintenanceLogUpdate,
+    db: Session = Depends(get_db),
+):
+    """
+    Updates only the provided fields (e.g. adding notes later). 
+    Asset data and snapshots are immutable.
+    """
+    log = db.query(MaintenanceLog).filter(MaintenanceLog.id == log_id).first()
+    if not log:
+        raise HTTPException(status_code=404, detail=f"Maintenance log {log_id} not found")
+
+    for field, value in log_in.model_dump(exclude_unset=True).items():
+        setattr(log, field, value)
+
+    db.commit()
+    db.refresh(log)
+    return log
+
+
+@router.delete(
+    "/maintenance/logs/{log_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a maintenance log",
+)
+def delete_maintenance_log(
+    log_id: int,
+    db: Session = Depends(get_db),
+):
+    """
+    Permanently deletes a maintenance log.
+    NOTE: Does NOT revert the state of previously closed MaintenanceAlerts.
+    """
+    log = db.query(MaintenanceLog).filter(MaintenanceLog.id == log_id).first()
+    if not log:
+        raise HTTPException(status_code=404, detail=f"Maintenance log {log_id} not found")
+
+    db.delete(log)
+    db.commit()
+    return None
 
 
 # ─── Maintenance Rules CRUD ───────────────────────────────────────────────────

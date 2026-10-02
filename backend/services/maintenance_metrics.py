@@ -27,6 +27,8 @@ from models import (
     EquipmentOperatingStatus,
     MaintenanceLog,
     TriggerType,
+    AssetMeter,
+    AssetType
 )
 
 logger = logging.getLogger("maintenance_metrics")
@@ -177,13 +179,56 @@ class MaintenanceMetricsCalculator:
         TriggerType.CYCLES       → number of motor startups / valve cycles
         TriggerType.CALENDAR_DAYS → days since last maintenance or first status
         """
+        current_absolute = 0
+        
+        # 1. Obtener valor absoluto actual (Odómetro global)
         if trigger_type == TriggerType.HOURS:
-            return int(cls.accumulated_hours(db, equipment_id))
+            current_absolute = int(cls.accumulated_hours(db, equipment_id))
         elif trigger_type in (TriggerType.CYCLES, TriggerType.STARTUPS):
-            return cls.startup_cycles(db, equipment_id)
+            current_absolute = cls.startup_cycles(db, equipment_id)
         elif trigger_type == TriggerType.CALENDAR_DAYS:
             return cls.calendar_days_since_last_maintenance(db, equipment_id)
-        return 0
+            
+        # Sincronizar el AssetMeter de forma pasiva para que la DB refleje la realidad
+        meter = db.query(AssetMeter).filter_by(asset_id=equipment_id).first()
+        if not meter:
+            meter = AssetMeter(
+                asset_type=AssetType.EQUIPMENT,
+                asset_id=equipment_id,
+                total_hours=0,
+                total_cycles=0,
+                total_startups=0
+            )
+            db.add(meter)
+            
+        if trigger_type == TriggerType.HOURS:
+            meter.total_hours = current_absolute
+        elif trigger_type in (TriggerType.CYCLES, TriggerType.STARTUPS):
+            meter.total_cycles = current_absolute
+            meter.total_startups = current_absolute
+        db.commit()
+
+        # 2. Obtener el snapshot del último mantenimiento registrado para este equipo
+        last_log = (
+            db.query(MaintenanceLog)
+            .filter(MaintenanceLog.asset_id == equipment_id)
+            .order_by(MaintenanceLog.created_at.desc())
+            .first()
+        )
+
+        # 3. Calcular Delta (Odómetro Actual - Odómetro en el último mantenimiento)
+        if not last_log:
+            return current_absolute
+            
+        if trigger_type == TriggerType.HOURS:
+            last_snapshot = last_log.hours_at_execution or 0
+            return max(0, current_absolute - last_snapshot)
+            
+        elif trigger_type in (TriggerType.CYCLES, TriggerType.STARTUPS):
+            last_snapshot = last_log.cycles_at_execution or last_log.startups_at_execution or 0
+            return max(0, current_absolute - last_snapshot)
+
+        return current_absolute
 
 
 # Stateless — no singleton needed, but expose a module-level alias for convenience

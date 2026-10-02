@@ -147,6 +147,8 @@ class MaintenanceRuleUpdate(BaseModel):
 
 class MaintenanceRuleRead(MaintenanceRuleBase):
     id: int
+    created_at: datetime
+    updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -203,6 +205,9 @@ class MaintenanceLogUpdate(BaseModel):
 class MaintenanceLogRead(MaintenanceLogBase):
     id: int
     created_at: datetime
+    hours_at_execution: Optional[int] = None
+    cycles_at_execution: Optional[int] = None
+    startups_at_execution: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 

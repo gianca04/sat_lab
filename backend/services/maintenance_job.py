@@ -27,7 +27,7 @@ class MaintenanceJob:
     even if the equipment state hasn't changed recently.
     """
     
-    def __init__(self, interval_seconds: int = 3600): # 1 hour by default
+    def __init__(self, interval_seconds: int = 60): # 1 minute for near real-time evaluation
         self.interval_seconds = interval_seconds
         self._is_running = False
         self._task = None
@@ -84,4 +84,4 @@ class MaintenanceJob:
             self._task.cancel()
 
 # Singleton instance
-maintenance_job = MaintenanceJob(interval_seconds=3600) # Run every hour in production
+maintenance_job = MaintenanceJob(interval_seconds=60) # Run every minute in production

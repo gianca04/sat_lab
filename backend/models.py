@@ -276,6 +276,37 @@ class EquipmentHistoryStatus(Base):
     )
 
 
+class AssetMeter(Base):
+    """
+    Absolute cumulative counters (Odometer) for any asset type.
+    These values are strictly increasing and periodically updated 
+    (either directly from PLC via Sparkplug B or by a backend worker).
+    """
+    __tablename__ = "asset_meters"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    asset_type: Mapped[AssetType] = mapped_column(
+        Enum(AssetType, name="asset_type_enum"),
+        nullable=False,
+    )
+    asset_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    
+    total_hours: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
+    total_cycles: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
+    total_startups: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
+    
+    last_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        Index("ix_asset_meter_asset", "asset_type", "asset_id", unique=True),
+    )
+
+
 # ============================================================================
 # MAINTENANCE MANAGEMENT & RULES
 # ============================================================================
@@ -300,6 +331,17 @@ class MaintenanceRule(Base):
     )
     threshold_value: Mapped[int] = mapped_column(BigInteger, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
 
     # Relationships
     alerts: Mapped[List["MaintenanceAlert"]] = relationship(
@@ -384,6 +426,12 @@ class MaintenanceLog(Base):
     technician: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    
+    # Odometers snapshot at the exact time of maintenance execution
+    hours_at_execution: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    cycles_at_execution: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    startups_at_execution: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
