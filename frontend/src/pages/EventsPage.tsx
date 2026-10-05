@@ -30,19 +30,62 @@ export function EventsPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {/* Page Header */}
+      <div className="gf-page-header">
+        <h1 className="gf-page-title">Eventos de Ciclo de Vida Sparkplug B</h1>
+      </div>
+
+      {/* Stat Panels */}
+      <div className="gf-stat-grid">
+        <div className="gf-stat">
+          <div className="gf-stat-label">Total eventos</div>
+          <div className="gf-stat-value">{events?.length ?? "—"}</div>
+        </div>
+        <div className="gf-stat">
+          <div className="gf-stat-label">Eventos Online (Birth)</div>
+          <div className="gf-stat-value" style={{ color: "#5794f2" }}>
+            {events ? events.filter((e) => ["NBIRTH", "DBIRTH"].includes(e.event_type)).length : "—"}
+          </div>
+        </div>
+        <div className="gf-stat">
+          <div className="gf-stat-label">Eventos Desconexión (Death)</div>
+          <div className="gf-stat-value" style={{ color: "#f2495c" }}>
+            {events ? events.filter((e) => ["NDEATH", "DDEATH"].includes(e.event_type)).length : "—"}
+          </div>
+        </div>
+        <div className="gf-stat">
+          <div className="gf-stat-label">Último estado registrado</div>
+          {events && events.length > 0 ? (
+            <>
+              <div
+                className="gf-stat-value gf-stat-value-sm"
+                style={{ color: events[0].status === "ONLINE" ? "#73bf69" : "#f2495c" }}
+              >
+                {events[0].status}
+              </div>
+              <div style={{ fontSize: 11, color: "#52545b", marginTop: 2 }}>
+                {events[0].node_id} · {events[0].event_type}
+              </div>
+            </>
+          ) : (
+            <div className="gf-stat-value gf-stat-value-sm" style={{ color: "#52545b" }}>Sin datos</div>
+          )}
+        </div>
+      </div>
+
       {/* Toolbar */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <form onSubmit={handleSearch} style={{ display: "flex", gap: 6, flex: 1 }}>
+      <div className="gf-toolbar">
+        <form onSubmit={handleSearch} style={{ display: "flex", gap: 6, flexWrap: "wrap", flex: "1 1 320px" }}>
           <input
             className="gf-input"
             placeholder="Buscar por node_id o device_id…"
-            style={{ width: 280 }}
+            style={{ flex: "1 1 180px", minWidth: 140 }}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
           <select
             className="gf-input"
-            style={{ width: 140 }}
+            style={{ flex: "0 1 140px", minWidth: 120 }}
             value={eventType}
             onChange={(e) => setEventType(e.target.value)}
           >
@@ -52,31 +95,31 @@ export function EventsPage() {
             <option>DBIRTH</option>
             <option>DDEATH</option>
           </select>
-          <button type="submit" className="gf-btn gf-btn-secondary">Filtrar</button>
+          <button type="submit" className="gf-btn gf-btn-secondary" style={{ flexShrink: 0 }}>Filtrar</button>
           {(query || eventType) && (
-            <button type="button" className="gf-btn gf-btn-ghost" onClick={() => { setSearch(""); setQuery(""); setEventType("") }}>
+            <button type="button" className="gf-btn gf-btn-ghost" style={{ flexShrink: 0 }} onClick={() => { setSearch(""); setQuery(""); setEventType("") }}>
               Limpiar
             </button>
           )}
         </form>
-        <button className="gf-btn gf-btn-ghost" onClick={refetch}>Actualizar</button>
+        <button className="gf-btn gf-btn-ghost" style={{ flexShrink: 0 }} onClick={refetch}>Actualizar</button>
       </div>
 
       {/* Table */}
       <div className="gf-panel">
         <div className="gf-panel-header">
-          <span className="gf-panel-title">sparkplug_lifecycle_events {events ? `— ${events.length} registros` : ""}</span>
+          <span className="gf-panel-title">Eventos de Telemetría ({events?.length ?? 0})</span>
         </div>
         <div className="gf-table-wrap">
           <table className="gf-table">
             <thead>
               <tr>
-                <th style={{ width: 60 }}>id</th>
-                <th style={{ width: 180 }}>event_time</th>
-                <th style={{ width: 100 }}>event_type</th>
-                <th>node_id</th>
-                <th>device_id</th>
-                <th style={{ width: 100, textAlign: "right" }}>status</th>
+                <th style={{ width: 60 }}>ID</th>
+                <th style={{ width: 180 }}>Fecha y Hora</th>
+                <th style={{ width: 110 }}>Tipo de Evento</th>
+                <th>Nodo</th>
+                <th>Dispositivo</th>
+                <th style={{ width: 100, textAlign: "right" }}>Estado</th>
               </tr>
             </thead>
             <tbody>

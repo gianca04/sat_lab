@@ -160,6 +160,13 @@ class DatabaseInitializer:
                             ALTER TABLE equipments ADD COLUMN parent_tag VARCHAR(100) 
                             REFERENCES equipments(tag_name) ON UPDATE CASCADE ON DELETE SET NULL;
                         END IF;
+                        IF NOT EXISTS (
+                            SELECT 1 FROM information_schema.columns 
+                            WHERE table_name='maintenance_logs' AND column_name='alert_id'
+                        ) THEN
+                            ALTER TABLE maintenance_logs ADD COLUMN alert_id BIGINT 
+                            REFERENCES maintenance_alerts(id) ON UPDATE CASCADE ON DELETE SET NULL;
+                        END IF;
                     END $$;
                 """))
 

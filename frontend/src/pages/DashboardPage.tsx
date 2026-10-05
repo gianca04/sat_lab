@@ -12,8 +12,13 @@ export function DashboardPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {/* Page Header */}
+      <div className="gf-page-header">
+        <h1 className="gf-page-title">Visión General del Laboratorio</h1>
+      </div>
+
       {/* Stat Panels */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+      <div className="gf-stat-grid">
         <div className="gf-stat">
           <div className="gf-stat-label">Edge Nodes</div>
           <div className="gf-stat-value">{nodes?.length ?? "—"}</div>
@@ -49,18 +54,18 @@ export function DashboardPage() {
       {/* Recent Events */}
       <div className="gf-panel">
         <div className="gf-panel-header">
-          <span className="gf-panel-title">sparkplug_lifecycle_events — últimos 10</span>
+          <span className="gf-panel-title">Últimos Eventos de Ciclo de Vida</span>
         </div>
         <div className="gf-table-wrap">
           <table className="gf-table">
             <thead>
               <tr>
-                <th style={{ width: 60 }}>id</th>
-                <th style={{ width: 180 }}>event_time</th>
-                <th style={{ width: 100 }}>event_type</th>
-                <th>node_id</th>
-                <th>device_id</th>
-                <th style={{ width: 100, textAlign: "right" }}>status</th>
+                <th style={{ width: 60 }}>ID</th>
+                <th style={{ width: 180 }}>Fecha y Hora</th>
+                <th style={{ width: 110 }}>Tipo de Evento</th>
+                <th>Nodo</th>
+                <th>Dispositivo</th>
+                <th style={{ width: 100, textAlign: "right" }}>Estado</th>
               </tr>
             </thead>
             <tbody>
@@ -97,15 +102,15 @@ export function DashboardPage() {
       {nodes && nodes.length > 0 && (
         <div className="gf-panel">
           <div className="gf-panel-header">
-            <span className="gf-panel-title">nodes — topología activa</span>
+            <span className="gf-panel-title">Topología Activa de Nodos</span>
           </div>
           <div className="gf-table-wrap">
             <table className="gf-table">
               <thead>
                 <tr>
-                  <th>tag_name</th>
-                  <th>name</th>
-                  <th style={{ width: 180, textAlign: "right" }}>created_at</th>
+                  <th>Tag</th>
+                  <th>Nombre</th>
+                  <th style={{ width: 180, textAlign: "right" }}>Fecha de Registro</th>
                 </tr>
               </thead>
               <tbody>

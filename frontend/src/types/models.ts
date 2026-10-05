@@ -65,16 +65,33 @@ export interface MaintenanceRule {
   is_active: boolean
 }
 
+export interface MaintenanceAlert {
+  id: number
+  rule_id: number
+  asset_type: AssetType
+  asset_id: string
+  calculated_value: number
+  threshold_value: number
+  status: AlertStatus
+  triggered_at: string
+  rule?: MaintenanceRule | null
+}
+
 export interface MaintenanceLog {
   id: number
   asset_type: AssetType
   asset_id: string
   maintenance_type: MaintenanceType
+  alert_id?: number | null
   scheduled_at: string | null
   executed_at: string | null
   completed_at: string | null
   technician: string | null
   description: string | null
   notes: string | null
+  hours_at_execution?: number | null
+  cycles_at_execution?: number | null
+  startups_at_execution?: number | null
   created_at: string
+  alert?: MaintenanceAlert | null
 }

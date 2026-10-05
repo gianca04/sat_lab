@@ -12,11 +12,18 @@ connect_args = {}
 if DATABASE_URL.startswith("sqlite"):
     connect_args = {"check_same_thread": False}
 
+pool_kwargs = {}
+if not DATABASE_URL.startswith("sqlite"):
+    # Must exceed the API thread limit (see main.py) + background workers,
+    # otherwise sync endpoints can deadlock waiting for connections.
+    pool_kwargs = {"pool_size": 20, "max_overflow": 10, "pool_timeout": 15, "pool_recycle": 1800}
+
 engine = create_engine(
     DATABASE_URL,
     connect_args=connect_args,
     pool_pre_ping=True,
     echo=False,
+    **pool_kwargs,
 )
 
 SessionLocal = sessionmaker(

@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from database import SessionLocal
-from models import MaintenanceRule, AssetType
+from models import MaintenanceRule, AssetType, TriggerType
 from services.maintenance_metrics import maintenance_metrics
 from services.maintenance_service import MaintenanceService
 

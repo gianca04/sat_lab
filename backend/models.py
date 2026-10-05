@@ -387,6 +387,7 @@ class MaintenanceAlert(Base):
 
     # Relationships
     rule: Mapped["MaintenanceRule"] = relationship(back_populates="alerts")
+    logs: Mapped[List["MaintenanceLog"]] = relationship(back_populates="alert")
 
     __table_args__ = (
         Index("ix_maintenance_alert_asset_status", "asset_type", "asset_id", "status"),
@@ -410,6 +411,11 @@ class MaintenanceLog(Base):
     maintenance_type: Mapped[MaintenanceType] = mapped_column(
         Enum(MaintenanceType, name="maintenance_type_enum"),
         nullable=False,
+    )
+    alert_id: Mapped[Optional[int]] = mapped_column(
+        BigInteger,
+        ForeignKey("maintenance_alerts.id", ondelete="SET NULL"),
+        nullable=True,
     )
     scheduled_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True),
@@ -437,6 +443,9 @@ class MaintenanceLog(Base):
         default=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
+
+    # Relationships
+    alert: Mapped[Optional["MaintenanceAlert"]] = relationship(back_populates="logs")
 
     __table_args__ = (
         Index("ix_maintenance_log_asset_created", "asset_type", "asset_id", "created_at"),

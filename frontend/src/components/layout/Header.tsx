@@ -1,73 +1,81 @@
+import { useState } from "react"
 import { useLocation } from "react-router-dom"
-import { Search, ChevronRight, RefreshCw, Clock, User } from "lucide-react"
+import { ChevronRight, Menu, RefreshCw } from "lucide-react"
 
 const routeNames: Record<string, string> = {
   "/": "Visión General",
   "/nodes": "Nodos & Dispositivos",
   "/equipments": "Activos ISA-95",
+  "/alerts": "Alertas de Mantenimiento",
   "/maintenance": "Mantenimiento",
   "/events": "Eventos Sparkplug",
-  "/settings": "Configuración",
 }
 
-export function Header() {
+interface HeaderProps {
+  onToggleMobileMenu?: () => void
+}
+
+export function Header({ onToggleMobileMenu }: HeaderProps) {
   const location = useLocation()
   const currentTitle = routeNames[location.pathname] ?? "Panel"
+  const [isSpinning, setIsSpinning] = useState(false)
+
+  const handleRefresh = () => {
+    setIsSpinning(true)
+    window.dispatchEvent(new CustomEvent("app:refresh"))
+    setTimeout(() => setIsSpinning(false), 600)
+  }
 
   return (
     <header className="gf-topbar">
-      {/* Grafana-style breadcrumb */}
-      <div className="gf-breadcrumb">
-        <span>Laboratorio</span>
-        <span className="gf-breadcrumb-sep">
-          <ChevronRight size={11} />
-        </span>
-        <span className="gf-breadcrumb-current">{currentTitle}</span>
+      {/* Left section: Mobile toggle & Breadcrumb */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+        {onToggleMobileMenu && (
+          <button
+            type="button"
+            className="gf-btn gf-btn-ghost gf-mobile-menu-btn"
+            style={{
+              height: 26,
+              width: 26,
+              padding: 0,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+            onClick={onToggleMobileMenu}
+            title="Abrir menú de navegación"
+          >
+            <Menu size={16} />
+          </button>
+        )}
+
+        {/* Breadcrumb */}
+        <div className="gf-breadcrumb" style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <span className="gf-breadcrumb-parent">Laboratorio</span>
+          <span className="gf-breadcrumb-sep gf-breadcrumb-parent">
+            <ChevronRight size={11} />
+          </span>
+          <span className="gf-breadcrumb-current">{currentTitle}</span>
+        </div>
       </div>
 
-      {/* Grafana-style controls */}
-      <div className="gf-topbar-actions">
-        {/* Search */}
-        <div className="gf-search">
-          <Search className="gf-search-icon" />
-          <input
-            className="gf-search-input"
-            type="text"
-            placeholder="Buscar..."
-            readOnly
-          />
-          <span className="gf-search-shortcut">ctrl+k</span>
-        </div>
-
-        {/* Time range */}
-        <button className="gf-btn gf-btn-secondary" style={{ gap: 4 }}>
-          <Clock size={12} />
-          Últimas 6 horas
-        </button>
-
+      {/* Topbar controls */}
+      <div className="gf-topbar-actions" style={{ flexShrink: 0 }}>
         {/* Refresh */}
-        <button className="gf-btn gf-btn-secondary" style={{ gap: 4 }}>
-          <RefreshCw size={12} />
-          Actualizar
-        </button>
-
-        {/* User avatar */}
-        <div
-          style={{
-            width: 26,
-            height: 26,
-            borderRadius: "50%",
-            background: "#22252b",
-            border: "1px solid #2c3235",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            color: "#8e8e93",
-          }}
+        <button
+          className="gf-btn gf-btn-secondary"
+          style={{ gap: 4 }}
+          onClick={handleRefresh}
+          title="Actualizar datos de la vista activa"
         >
-          <User size={14} />
-        </div>
+          <RefreshCw
+            size={12}
+            style={{
+              transition: "transform 0.6s ease",
+              transform: isSpinning ? "rotate(360deg)" : "rotate(0deg)",
+            }}
+          />
+          <span className="hidden sm:inline">Actualizar</span>
+        </button>
       </div>
     </header>
   )

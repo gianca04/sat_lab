@@ -1,8 +1,18 @@
 import { useCallback, useMemo, useState } from "react"
-import { Pencil, Plus, Trash2, X } from "lucide-react"
+import { Link } from "react-router-dom"
+import { AlertTriangle, Pencil, Plus, Trash2, X } from "lucide-react"
 import { useApi } from "@/hooks/useApi"
 import { api } from "@/lib/apiClient"
-import type { AssetType, Device, Equipment, MaintenanceLog, MaintenanceRule, Node, TriggerType } from "@/types/models"
+import type {
+  AssetType,
+  Device,
+  Equipment,
+  MaintenanceAlert,
+  MaintenanceLog,
+  MaintenanceRule,
+  Node,
+  TriggerType,
+} from "@/types/models"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -29,7 +39,7 @@ const EMPTY_FORM: RuleForm = {
 const TRIGGER_LABELS: Record<TriggerType, string> = {
   HOURS: "Horas de operación",
   CYCLES: "Ciclos de trabajo",
-  STARTUPS: "Arranques de motor",
+  STARTUPS: "Arranques",
   CALENDAR_DAYS: "Días calendario",
 }
 
@@ -39,7 +49,18 @@ const ASSET_TYPE_LABELS: Record<AssetType, string> = {
   NODE: "Edge Node",
 }
 
-// ─── Form Panel ───────────────────────────────────────────────────────────────
+const MAINTENANCE_TYPE_LABELS: Record<string, string> = {
+  PREVENTIVE: "Preventivo",
+  CORRECTIVE: "Correctivo",
+  PREDICTIVE: "Predictivo",
+  CALIBRATION: "Calibración",
+  FIRMWARE_UPDATE: "Actualización Firmware",
+  INSPECTION: "Inspección",
+  OVERHAUL: "Overhaul",
+  EMERGENCY: "Emergencia",
+}
+
+// ─── Form Panels ──────────────────────────────────────────────────────────────
 
 interface RuleFormPanelProps {
   initial?: MaintenanceRule | null
@@ -51,14 +72,14 @@ function RuleFormPanel({ initial, onSave, onCancel }: RuleFormPanelProps) {
   const [form, setForm] = useState<RuleForm>(
     initial
       ? {
-          asset_type: initial.asset_type,
-          asset_id: initial.asset_id,
-          name: initial.name,
-          description: initial.description ?? "",
-          trigger_type: initial.trigger_type,
-          threshold_value: initial.threshold_value,
-          is_active: initial.is_active,
-        }
+        asset_type: initial.asset_type,
+        asset_id: initial.asset_id,
+        name: initial.name,
+        description: initial.description ?? "",
+        trigger_type: initial.trigger_type,
+        threshold_value: initial.threshold_value,
+        is_active: initial.is_active,
+      }
       : EMPTY_FORM,
   )
   const [saving, setSaving] = useState(false)
@@ -140,7 +161,7 @@ function RuleFormPanel({ initial, onSave, onCancel }: RuleFormPanelProps) {
       </div>
       <div className="gf-panel-body">
         <form onSubmit={handleSubmit}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
+          <div className="gf-form-grid-3">
 
             {/* asset_type — inmutable en edición */}
             <div>
@@ -186,8 +207,8 @@ function RuleFormPanel({ initial, onSave, onCancel }: RuleFormPanelProps) {
                     {assetsLoading
                       ? "Cargando…"
                       : assetOptions.length === 0
-                      ? `Sin ${ASSET_TYPE_LABELS[form.asset_type].toLowerCase()}s registrados`
-                      : `— Selecciona ${ASSET_TYPE_LABELS[form.asset_type].toLowerCase()} —`}
+                        ? `Sin ${ASSET_TYPE_LABELS[form.asset_type].toLowerCase()}s registrados`
+                        : `— Selecciona ${ASSET_TYPE_LABELS[form.asset_type].toLowerCase()} —`}
                   </option>
                   {assetOptions.map((o) => (
                     <option key={o.value} value={o.value}>
@@ -288,13 +309,207 @@ function RuleFormPanel({ initial, onSave, onCancel }: RuleFormPanelProps) {
   )
 }
 
+interface LogForm {
+  asset_type: AssetType
+  asset_id: string
+  maintenance_type: string
+  technician: string
+  description: string
+}
+
+const EMPTY_LOG_FORM: LogForm = {
+  asset_type: "EQUIPMENT",
+  asset_id: "",
+  maintenance_type: "PREVENTIVE",
+  technician: "",
+  description: "",
+}
+
+interface LogFormPanelProps {
+  initial?: MaintenanceLog | null
+  onSave: (log: MaintenanceLog) => void
+  onCancel: () => void
+}
+
+function LogFormPanel({ initial, onSave, onCancel }: LogFormPanelProps) {
+  const [form, setForm] = useState<LogForm>(
+    initial 
+      ? {
+        asset_type: initial.asset_type,
+        asset_id: initial.asset_id,
+        maintenance_type: initial.maintenance_type,
+        technician: initial.technician ?? "",
+        description: initial.description ?? ""
+      }
+      : EMPTY_LOG_FORM
+  )
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const { data: nodes, loading: nodesLoading } = useApi<Node[]>(
+    form.asset_type === "NODE" ? "/api/nodes" : null,
+  )
+  const { data: devices, loading: devicesLoading } = useApi<Device[]>(
+    form.asset_type === "DEVICE" ? "/api/devices" : null,
+  )
+  const { data: equipments, loading: equipLoading } = useApi<Equipment[]>(
+    form.asset_type === "EQUIPMENT" ? "/api/equipments" : null,
+  )
+
+  const assetOptions = useMemo((): { value: string; label: string }[] => {
+    if (form.asset_type === "NODE") return (nodes ?? []).map((n) => ({ value: n.tag_name, label: n.tag_name }))
+    if (form.asset_type === "DEVICE") return (devices ?? []).map((d) => ({ value: d.tag_name, label: `${d.tag_name} (${d.node_tag})` }))
+    return (equipments ?? []).map((e) => ({ value: e.tag_name, label: e.tag_name }))
+  }, [form.asset_type, nodes, devices, equipments])
+
+  const assetsLoading = nodesLoading || devicesLoading || equipLoading
+
+  const set = (key: keyof LogForm, value: unknown) =>
+    setForm((f) => ({ ...f, [key]: value }))
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!form.asset_id.trim()) { setError("asset_id es obligatorio"); return }
+
+    setSaving(true)
+    setError(null)
+    try {
+      const payload = {
+        ...form,
+        technician: form.technician || null,
+        description: form.description || null,
+      }
+      
+      let result: MaintenanceLog
+      if (initial) {
+        result = await api.patch<MaintenanceLog>(`/api/maintenance/logs/${initial.id}`, payload)
+      } else {
+        result = await api.post<MaintenanceLog>("/api/maintenance/logs", payload)
+      }
+      onSave(result)
+    } catch (err: unknown) {
+      setError((err as Error).message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="gf-panel">
+      <div className="gf-panel-header">
+        <span className="gf-panel-title">
+          {initial ? `Editar Registro #${initial.id}` : "Nuevo Registro de Mantenimiento"}
+        </span>
+        <button className="gf-btn gf-btn-ghost" onClick={onCancel} style={{ height: 22 }}>
+          <X size={12} /> Cancelar
+        </button>
+      </div>
+      <div className="gf-panel-body">
+        <form onSubmit={handleSubmit}>
+          <div className="gf-form-grid-3">
+            <div>
+              <label className="gf-label">Tipo de Activo *</label>
+              <select
+                className="gf-input"
+                value={form.asset_type}
+                disabled={!!initial}
+                onChange={(e) => {
+                  set("asset_type", e.target.value as AssetType)
+                  set("asset_id", "")
+                }}
+              >
+                {(["EQUIPMENT", "DEVICE", "NODE"] as AssetType[]).map((t) => (
+                  <option key={t} value={t}>{ASSET_TYPE_LABELS[t]}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="gf-label">Identificador *</label>
+              {initial ? (
+                <input className="gf-input" value={form.asset_id} readOnly />
+              ) : (
+                <select
+                  className="gf-input"
+                  value={form.asset_id}
+                  disabled={assetsLoading || assetOptions.length === 0}
+                  onChange={(e) => set("asset_id", e.target.value)}
+                >
+                  <option value="">
+                    {assetsLoading
+                      ? "Cargando…"
+                      : assetOptions.length === 0
+                        ? `Sin ${ASSET_TYPE_LABELS[form.asset_type].toLowerCase()}s`
+                        : `— Selecciona ${ASSET_TYPE_LABELS[form.asset_type].toLowerCase()} —`}
+                  </option>
+                  {assetOptions.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            <div>
+              <label className="gf-label">Tipo de Mantenimiento *</label>
+              <select
+                className="gf-input"
+                value={form.maintenance_type}
+                onChange={(e) => set("maintenance_type", e.target.value)}
+              >
+                {Object.entries(MAINTENANCE_TYPE_LABELS).map(([k, v]) => (
+                  <option key={k} value={k}>{v}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="gf-label">Técnico</label>
+              <input
+                className="gf-input"
+                value={form.technician}
+                placeholder="Nombre del técnico"
+                onChange={(e) => set("technician", e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 12 }}>
+            <label className="gf-label">Descripción de la intervención</label>
+            <input
+              className="gf-input"
+              value={form.description}
+              placeholder="¿Qué se realizó durante el mantenimiento?"
+              onChange={(e) => set("description", e.target.value)}
+            />
+          </div>
+
+          {error && <div style={{ fontSize: 12, color: "#f2495c", marginBottom: 10 }}>{error}</div>}
+
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="submit" className="gf-btn gf-btn-primary" disabled={saving}>
+              {saving ? "Guardando…" : initial ? "Guardar cambios" : "Registrar Intervención"}
+            </button>
+            <button type="button" className="gf-btn gf-btn-ghost" onClick={onCancel}>
+              Cancelar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export function MaintenancePage() {
-  const [showForm, setShowForm] = useState(false)
-  const [editing, setEditing] = useState<MaintenanceRule | null>(null)
-  const [confirmDelete, setConfirmDelete] = useState<number | null>(null)
+  const [showRuleForm, setShowRuleForm] = useState(false)
+  const [showLogForm, setShowLogForm] = useState(false)
+  const [editingRule, setEditingRule] = useState<MaintenanceRule | null>(null)
+  const [editingLog, setEditingLog] = useState<MaintenanceLog | null>(null)
+  const [confirmDeleteRule, setConfirmDeleteRule] = useState<number | null>(null)
+  const [confirmDeleteLog, setConfirmDeleteLog] = useState<number | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [feedback, setFeedback] = useState<{ message: string; type: "success" | "error" } | null>(null)
 
   const { data: rules, loading: rLoading, error: rError, refetch: refetchRules } =
     useApi<MaintenanceRule[]>("/api/maintenance/rules")
@@ -302,38 +517,171 @@ export function MaintenancePage() {
   const { data: logs, loading: lLoading, error: lError, refetch: refetchLogs } =
     useApi<MaintenanceLog[]>("/api/maintenance/logs")
 
-  const handleSaved = useCallback(() => {
-    setShowForm(false)
-    setEditing(null)
+  const { data: alerts, refetch: refetchAlerts } =
+    useApi<MaintenanceAlert[]>("/api/maintenance/alerts")
+
+  const activeAlerts = useMemo(
+    () => (alerts ?? []).filter((a) => a.status === "PENDING" || a.status === "ACKNOWLEDGED"),
+    [alerts],
+  )
+
+  const handleSavedRule = useCallback(() => {
+    setShowRuleForm(false)
+    setEditingRule(null)
+    setFeedback({ message: "Regla guardada correctamente.", type: "success" })
     refetchRules()
   }, [refetchRules])
 
-  const handleDelete = async (id: number) => {
+  const handleSavedLog = useCallback(() => {
+    setShowLogForm(false)
+    setEditingLog(null)
+    setFeedback({ message: "Registro de mantenimiento guardado.", type: "success" })
+    refetchLogs()
+    refetchRules()
+    refetchAlerts()
+  }, [refetchLogs, refetchRules, refetchAlerts])
+
+  const handleDeleteRule = async (id: number) => {
     setDeleting(true)
     try {
       await api.delete(`/api/maintenance/rules/${id}`)
-      setConfirmDelete(null)
+      setConfirmDeleteRule(null)
+      setFeedback({ message: `Regla #${id} eliminada correctamente.`, type: "success" })
       refetchRules()
     } catch (err) {
-      alert((err as Error).message)
+      setFeedback({ message: (err as Error).message ?? "Error al eliminar la regla", type: "error" })
     } finally {
       setDeleting(false)
     }
   }
 
-  const openCreate = () => { setEditing(null); setShowForm(true) }
-  const openEdit = (r: MaintenanceRule) => { setEditing(r); setShowForm(true) }
-  const closeForm = () => { setShowForm(false); setEditing(null) }
+  const handleDeleteLog = async (id: number) => {
+    setDeleting(true)
+    try {
+      await api.delete(`/api/maintenance/logs/${id}`)
+      setConfirmDeleteLog(null)
+      setFeedback({ message: `Registro de mantenimiento #${id} eliminado.`, type: "success" })
+      refetchLogs()
+    } catch (err) {
+      setFeedback({ message: (err as Error).message ?? "Error al eliminar el registro", type: "error" })
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const openCreateRule = () => { setEditingRule(null); setShowRuleForm(true); setShowLogForm(false) }
+  const openEditRule = (r: MaintenanceRule) => { setEditingRule(r); setShowRuleForm(true); setShowLogForm(false) }
+  const closeRuleForm = () => { setShowRuleForm(false); setEditingRule(null) }
+
+  const openCreateLog = () => { setEditingLog(null); setShowLogForm(true); setShowRuleForm(false) }
+  const openEditLog = (l: MaintenanceLog) => { setEditingLog(l); setShowLogForm(true); setShowRuleForm(false) }
+  const closeLogForm = () => { setShowLogForm(false); setEditingLog(null) }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {/* Page Header */}
+      <div className="gf-page-header">
+        <h1 className="gf-page-title">Mantenimiento Industrial & Bitácora</h1>
+      </div>
 
-      {/* Form panel (create / edit) */}
-      {showForm && (
+      {/* Stat Panels */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+        <div className="gf-stat">
+          <div className="gf-stat-label">Reglas configuradas</div>
+          <div className="gf-stat-value">{rules?.length ?? "—"}</div>
+        </div>
+        <div className="gf-stat">
+          <div className="gf-stat-label">Reglas activas</div>
+          <div className="gf-stat-value" style={{ color: "#73bf69" }}>
+            {rules ? rules.filter((r) => r.is_active).length : "—"}
+          </div>
+        </div>
+        <div className="gf-stat">
+          <div className="gf-stat-label">Intervenciones registradas</div>
+          <div className="gf-stat-value">{logs?.length ?? "—"}</div>
+        </div>
+        <div className="gf-stat">
+          <div className="gf-stat-label">Alertas activas</div>
+          <div
+            className="gf-stat-value gf-stat-value-sm"
+            style={{ color: activeAlerts.length > 0 ? "#f2495c" : "#73bf69" }}
+          >
+            {activeAlerts.length > 0 ? `${activeAlerts.length} pendientes` : "Normal"}
+          </div>
+          <div style={{ fontSize: 11, color: "#52545b", marginTop: 2 }}>
+            {activeAlerts.length > 0 ? "Requiere inspección" : "Sin incidentes críticos"}
+          </div>
+        </div>
+      </div>
+
+      {/* Inline Feedback Banner */}
+      {feedback && (
+        <div
+          className={`gf-alert ${feedback.type === "success" ? "gf-alert-success" : "gf-alert-error"}`}
+          style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+        >
+          <span>{feedback.message}</span>
+          <button
+            type="button"
+            className="gf-btn gf-btn-ghost"
+            style={{ height: 18, width: 18, padding: 0 }}
+            onClick={() => setFeedback(null)}
+          >
+            <X size={12} />
+          </button>
+        </div>
+      )}
+
+      {/* Active Alerts Banner */}
+      {activeAlerts.length > 0 && (
+        <div
+          style={{
+            background: "rgba(242, 73, 92, 0.1)",
+            border: "1px solid #f2495c",
+            borderRadius: 2,
+            padding: "10px 14px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <AlertTriangle size={16} style={{ color: "#f2495c", flexShrink: 0 }} />
+            <span style={{ fontSize: 12, color: "#d8d9da" }}>
+              Hay <strong>{activeAlerts.length} alerta{activeAlerts.length > 1 ? "s" : ""} de mantenimiento activa{activeAlerts.length > 1 ? "s" : ""}</strong> pendiente{activeAlerts.length > 1 ? "s" : ""} de atención ({activeAlerts.map(a => a.asset_id).join(", ")}).
+            </span>
+          </div>
+          <Link
+            to="/alerts"
+            className="gf-btn gf-btn-secondary"
+            style={{
+              height: 24,
+              fontSize: 11,
+              gap: 6,
+              textDecoration: "none",
+              color: "#f2495c",
+              borderColor: "rgba(242, 73, 92, 0.4)",
+            }}
+          >
+            Ver Módulo de Alertas &rarr;
+          </Link>
+        </div>
+      )}
+
+      {/* Form panels */}
+      {showRuleForm && (
         <RuleFormPanel
-          initial={editing}
-          onSave={handleSaved}
-          onCancel={closeForm}
+          initial={editingRule}
+          onSave={handleSavedRule}
+          onCancel={closeRuleForm}
+        />
+      )}
+      
+      {showLogForm && (
+        <LogFormPanel
+          initial={editingLog}
+          onSave={handleSavedLog}
+          onCancel={closeLogForm}
         />
       )}
 
@@ -341,10 +689,10 @@ export function MaintenancePage() {
       <div className="gf-panel">
         <div className="gf-panel-header">
           <span className="gf-panel-title">
-            maintenance_rules {rules ? `— ${rules.length} reglas` : ""}
+            Reglas de Mantenimiento ({rules?.length ?? 0})
           </span>
-          {!showForm && (
-            <button className="gf-btn gf-btn-primary" style={{ height: 22 }} onClick={openCreate}>
+          {!showRuleForm && (
+            <button className="gf-btn gf-btn-primary" style={{ height: 22 }} onClick={openCreateRule}>
               <Plus size={12} /> Nueva regla
             </button>
           )}
@@ -353,14 +701,14 @@ export function MaintenancePage() {
           <table className="gf-table">
             <thead>
               <tr>
-                <th style={{ width: 50 }}>id</th>
-                <th style={{ width: 90 }}>asset_type</th>
-                <th style={{ width: 160 }}>asset_id</th>
-                <th>nombre</th>
-                <th style={{ width: 130 }}>trigger_type</th>
-                <th style={{ width: 90, textAlign: "right" }}>threshold</th>
-                <th style={{ width: 70, textAlign: "center" }}>activa</th>
-                <th style={{ width: 80, textAlign: "right" }}>acciones</th>
+                <th style={{ width: 50 }}>ID</th>
+                <th style={{ width: 100 }}>Tipo Activo</th>
+                <th style={{ width: 160 }}>Activo</th>
+                <th>Nombre de Regla</th>
+                <th style={{ width: 140 }}>Tipo de Disparo</th>
+                <th style={{ width: 90, textAlign: "right" }}>Umbral</th>
+                <th style={{ width: 70, textAlign: "center" }}>Estado</th>
+                <th style={{ width: 80, textAlign: "right" }}>Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -375,7 +723,7 @@ export function MaintenancePage() {
               )}
               {rules?.map((r) => (
                 <>
-                  <tr key={r.id} style={{ background: confirmDelete === r.id ? "rgba(242,73,92,0.06)" : undefined }}>
+                  <tr key={r.id} style={{ background: confirmDeleteRule === r.id ? "rgba(242,73,92,0.06)" : undefined }}>
                     <td className="muted">{r.id}</td>
                     <td>
                       <span className="gf-badge gf-badge-neutral">{r.asset_type}</span>
@@ -397,7 +745,7 @@ export function MaintenancePage() {
                           className="gf-btn gf-btn-ghost"
                           style={{ height: 22, padding: "0 6px" }}
                           title="Editar"
-                          onClick={() => openEdit(r)}
+                          onClick={() => openEditRule(r)}
                         >
                           <Pencil size={12} />
                         </button>
@@ -405,7 +753,7 @@ export function MaintenancePage() {
                           className="gf-btn gf-btn-ghost"
                           style={{ height: 22, padding: "0 6px", color: "#f2495c" }}
                           title="Eliminar"
-                          onClick={() => setConfirmDelete(r.id)}
+                          onClick={() => setConfirmDeleteRule(r.id)}
                         >
                           <Trash2 size={12} />
                         </button>
@@ -413,10 +761,10 @@ export function MaintenancePage() {
                     </td>
                   </tr>
                   {/* Confirm delete row */}
-                  {confirmDelete === r.id && (
-                    <tr key={`del-${r.id}`} style={{ background: "rgba(242,73,92,0.08)" }}>
+                  {confirmDeleteRule === r.id && (
+                    <tr key={`del-rule-${r.id}`} style={{ background: "rgba(242,73,92,0.08)" }}>
                       <td colSpan={8} style={{ padding: "8px 12px" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                           <span style={{ fontSize: 12, color: "#f2495c" }}>
                             ¿Eliminar regla <strong>#{r.id} {r.name}</strong>? Sus alertas asociadas se borrarán en cascada.
                           </span>
@@ -424,14 +772,14 @@ export function MaintenancePage() {
                             className="gf-btn gf-btn-ghost"
                             style={{ height: 22, color: "#f2495c", borderColor: "#f2495c" }}
                             disabled={deleting}
-                            onClick={() => handleDelete(r.id)}
+                            onClick={() => handleDeleteRule(r.id)}
                           >
                             {deleting ? "Eliminando…" : "Confirmar"}
                           </button>
                           <button
                             className="gf-btn gf-btn-ghost"
                             style={{ height: 22 }}
-                            onClick={() => setConfirmDelete(null)}
+                            onClick={() => setConfirmDeleteRule(null)}
                           >
                             Cancelar
                           </button>
@@ -449,22 +797,30 @@ export function MaintenancePage() {
       {/* Maintenance logs panel */}
       <div className="gf-panel">
         <div className="gf-panel-header">
-          <span className="gf-panel-title">maintenance_logs {logs ? `— ${logs.length} registros` : ""}</span>
-          <button className="gf-btn gf-btn-ghost" style={{ height: 22 }} onClick={refetchLogs}>
-            Actualizar
-          </button>
+          <span className="gf-panel-title">Bitácora de Intervenciones ({logs?.length ?? 0})</span>
+          <div style={{ display: "flex", gap: 8 }}>
+            {!showLogForm && (
+              <button className="gf-btn gf-btn-primary" style={{ height: 22 }} onClick={openCreateLog}>
+                <Plus size={12} /> Nuevo Registro
+              </button>
+            )}
+            <button className="gf-btn gf-btn-ghost" style={{ height: 22 }} onClick={refetchLogs}>
+              Actualizar
+            </button>
+          </div>
         </div>
         <div className="gf-table-wrap">
           <table className="gf-table">
             <thead>
               <tr>
-                <th style={{ width: 50 }}>id</th>
-                <th style={{ width: 100 }}>asset_type</th>
-                <th>asset_id</th>
-                <th style={{ width: 120 }}>tipo</th>
-                <th style={{ width: 150 }}>técnico</th>
-                <th>descripción</th>
-                <th style={{ width: 160, textAlign: "right" }}>created_at</th>
+                <th style={{ width: 50 }}>ID</th>
+                <th style={{ width: 110 }}>Tipo Activo</th>
+                <th>Activo</th>
+                <th style={{ width: 130 }}>Tipo Intervención</th>
+                <th style={{ width: 150 }}>Técnico</th>
+                <th>Descripción</th>
+                <th style={{ width: 160, textAlign: "right" }}>Fecha de Ejecución</th>
+                <th style={{ width: 80, textAlign: "right" }}>Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -475,13 +831,32 @@ export function MaintenancePage() {
                 <tr><td colSpan={7} style={{ textAlign: "center", color: "#f2495c", height: 40 }}>{lError}</td></tr>
               )}
               {!lLoading && !lError && (!logs || logs.length === 0) && (
-                <tr><td colSpan={7} style={{ textAlign: "center", color: "#52545b", height: 40 }}>Sin intervenciones registradas.</td></tr>
+                <tr><td colSpan={8} style={{ textAlign: "center", color: "#52545b", height: 40 }}>Sin intervenciones registradas.</td></tr>
               )}
               {logs?.map((l) => (
-                <tr key={l.id}>
+                <>
+                <tr key={l.id} style={{ background: confirmDeleteLog === l.id ? "rgba(242,73,92,0.06)" : undefined }}>
                   <td className="muted">{l.id}</td>
                   <td><span className="gf-badge gf-badge-neutral">{l.asset_type}</span></td>
-                  <td className="link">{l.asset_id}</td>
+                  <td className="link">
+                    {l.asset_id}
+                    {l.alert_id && (
+                      <span
+                        className="gf-badge"
+                        style={{
+                          marginLeft: 6,
+                          fontSize: 10,
+                          background: "rgba(115, 191, 105, 0.15)",
+                          color: "#73bf69",
+                          border: "1px solid #73bf69",
+                          verticalAlign: "middle",
+                        }}
+                        title={`Intervención asociada a Alerta #${l.alert_id}`}
+                      >
+                        Alerta #{l.alert_id}
+                      </span>
+                    )}
+                  </td>
                   <td className="muted">{l.maintenance_type}</td>
                   <td className="muted">{l.technician ?? "—"}</td>
                   <td className="muted" style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -490,7 +865,55 @@ export function MaintenancePage() {
                   <td className="muted" style={{ textAlign: "right" }}>
                     {new Date(l.created_at).toLocaleString("es-CO")}
                   </td>
+                  <td style={{ textAlign: "right" }}>
+                    <div style={{ display: "inline-flex", gap: 4 }}>
+                      <button
+                        className="gf-btn gf-btn-ghost"
+                        style={{ height: 22, padding: "0 6px" }}
+                        title="Editar"
+                        onClick={() => openEditLog(l)}
+                      >
+                        <Pencil size={12} />
+                      </button>
+                      <button
+                        className="gf-btn gf-btn-ghost"
+                        style={{ height: 22, padding: "0 6px", color: "#f2495c" }}
+                        title="Eliminar"
+                        onClick={() => setConfirmDeleteLog(l.id)}
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
+                {/* Confirm delete row */}
+                {confirmDeleteLog === l.id && (
+                  <tr key={`del-log-${l.id}`} style={{ background: "rgba(242,73,92,0.08)" }}>
+                    <td colSpan={8} style={{ padding: "8px 12px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 12, color: "#f2495c" }}>
+                          ¿Eliminar registro de mantenimiento <strong>#{l.id}</strong> de {l.asset_id}?
+                        </span>
+                        <button
+                          className="gf-btn gf-btn-ghost"
+                          style={{ height: 22, color: "#f2495c", borderColor: "#f2495c" }}
+                          disabled={deleting}
+                          onClick={() => handleDeleteLog(l.id)}
+                        >
+                          {deleting ? "Eliminando…" : "Confirmar"}
+                        </button>
+                        <button
+                          className="gf-btn gf-btn-ghost"
+                          style={{ height: 22 }}
+                          onClick={() => setConfirmDeleteLog(null)}
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                </>
               ))}
             </tbody>
           </table>

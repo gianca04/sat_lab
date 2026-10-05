@@ -9,6 +9,7 @@ from models import (
     MaintenanceRule,
 )
 from services.notification_service import NotificationService
+from services.alert_broadcaster import alert_broadcaster
 
 
 class MaintenanceService:
@@ -62,6 +63,7 @@ class MaintenanceService:
                 db.commit()
                 if notify:
                     NotificationService.send_maintenance_alert_notification(existing, is_warning=False)
+                alert_broadcaster.broadcast_change("alert_escalated")
                 return existing
             
             # Si sigue en zona de warning (85-99%), no hacemos spam
@@ -84,4 +86,5 @@ class MaintenanceService:
         if notify:
             NotificationService.send_maintenance_alert_notification(alert, is_warning=not is_critical)
 
+        alert_broadcaster.broadcast_change("alert_created")
         return alert

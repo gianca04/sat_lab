@@ -16,38 +16,70 @@ export function NodesPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {/* Page Header */}
+      <div className="gf-page-header">
+        <h1 className="gf-page-title">Topología de Red & Nodos</h1>
+      </div>
+
+      {/* Stat Panels */}
+      <div className="gf-stat-grid">
+        <div className="gf-stat">
+          <div className="gf-stat-label">Edge Nodes</div>
+          <div className="gf-stat-value">{nodes?.length ?? "—"}</div>
+        </div>
+        <div className="gf-stat">
+          <div className="gf-stat-label">Dispositivos PLC</div>
+          <div className="gf-stat-value">{devices?.length ?? "—"}</div>
+        </div>
+        <div className="gf-stat">
+          <div className="gf-stat-label">Nodos con Dispositivos</div>
+          <div className="gf-stat-value">
+            {devices ? new Set(devices.map((d) => d.node_tag)).size : "—"}
+          </div>
+        </div>
+        <div className="gf-stat">
+          <div className="gf-stat-label">Protocolo Sparkplug B</div>
+          <div className="gf-stat-value gf-stat-value-sm" style={{ color: "#73bf69" }}>
+            ACTIVO
+          </div>
+          <div style={{ fontSize: 11, color: "#52545b", marginTop: 2 }}>
+            MQTT v3.1.1 · ISO/IEC 20237
+          </div>
+        </div>
+      </div>
+
       {/* Toolbar */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <form onSubmit={handleSearch} style={{ display: "flex", gap: 6 }}>
+      <div className="gf-toolbar">
+        <form onSubmit={handleSearch} style={{ display: "flex", gap: 6, flexWrap: "wrap", flex: "1 1 280px", maxWidth: 440 }}>
           <input
             className="gf-input"
-            placeholder="Buscar por tag o nombre..."
-            style={{ width: 260 }}
+            placeholder="Buscar por tag o nombre…"
+            style={{ flex: "1 1 180px", minWidth: 140 }}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <button type="submit" className="gf-btn gf-btn-secondary">Buscar</button>
+          <button type="submit" className="gf-btn gf-btn-secondary" style={{ flexShrink: 0 }}>Buscar</button>
           {query && (
-            <button type="button" className="gf-btn gf-btn-ghost" onClick={() => { setSearch(""); setQuery("") }}>
+            <button type="button" className="gf-btn gf-btn-ghost" style={{ flexShrink: 0 }} onClick={() => { setSearch(""); setQuery("") }}>
               Limpiar
             </button>
           )}
         </form>
-        <button className="gf-btn gf-btn-ghost" onClick={refetch}>Actualizar</button>
+        <button className="gf-btn gf-btn-ghost" style={{ flexShrink: 0 }} onClick={refetch}>Actualizar</button>
       </div>
 
       {/* Nodes */}
       <div className="gf-panel">
         <div className="gf-panel-header">
-          <span className="gf-panel-title">nodes {nodes ? `— ${nodes.length} registros` : ""}</span>
+          <span className="gf-panel-title">Edge Nodes ({nodes?.length ?? 0})</span>
         </div>
         <div className="gf-table-wrap">
           <table className="gf-table">
             <thead>
               <tr>
-                <th>tag_name</th>
-                <th>name</th>
-                <th style={{ width: 180, textAlign: "right" }}>created_at</th>
+                <th>Tag</th>
+                <th>Nombre</th>
+                <th style={{ width: 180, textAlign: "right" }}>Fecha de Registro</th>
               </tr>
             </thead>
             <tbody>
@@ -77,16 +109,16 @@ export function NodesPage() {
       {/* Devices */}
       <div className="gf-panel">
         <div className="gf-panel-header">
-          <span className="gf-panel-title">devices {devices ? `— ${devices.length} registros` : ""}</span>
+          <span className="gf-panel-title">Dispositivos PLC ({devices?.length ?? 0})</span>
         </div>
         <div className="gf-table-wrap">
           <table className="gf-table">
             <thead>
               <tr>
-                <th>tag_name</th>
-                <th>name</th>
-                <th style={{ width: 180 }}>node_tag</th>
-                <th style={{ width: 180, textAlign: "right" }}>created_at</th>
+                <th>Tag</th>
+                <th>Nombre</th>
+                <th style={{ width: 180 }}>Nodo Asociado</th>
+                <th style={{ width: 180, textAlign: "right" }}>Fecha de Registro</th>
               </tr>
             </thead>
             <tbody>

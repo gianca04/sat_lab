@@ -173,6 +173,7 @@ class MaintenanceAlertUpdate(BaseModel):
 class MaintenanceAlertRead(MaintenanceAlertBase):
     id: int
     triggered_at: datetime
+    rule: Optional[MaintenanceRuleRead] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -181,6 +182,7 @@ class MaintenanceLogBase(BaseModel):
     asset_type: AssetType
     asset_id: str = Field(..., max_length=100)
     maintenance_type: MaintenanceType
+    alert_id: Optional[int] = None
     scheduled_at: Optional[datetime] = None
     executed_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
@@ -208,6 +210,7 @@ class MaintenanceLogRead(MaintenanceLogBase):
     hours_at_execution: Optional[int] = None
     cycles_at_execution: Optional[int] = None
     startups_at_execution: Optional[int] = None
+    alert: Optional[MaintenanceAlertRead] = None
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -4,7 +4,7 @@
  * Usage: const { data, loading, error, refetch } = useApi<Node[]>("/api/nodes")
  */
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { api } from "@/lib/apiClient"
 
 interface UseApiState<T> {
@@ -23,7 +23,9 @@ export function useApi<T>(
   const [error, setError] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
 
-  const buildPath = useCallback(() => {
+  // Serialize params so inline object literals (e.g. `{ limit: 10 }`) don't
+  // change identity on every render and trigger an infinite re-fetch loop.
+  const fullPath = useMemo(() => {
     if (!path) return null
     if (!params) return path
     const qs = new URLSearchParams()
@@ -32,10 +34,10 @@ export function useApi<T>(
     }
     const s = qs.toString()
     return s ? `${path}?${s}` : path
-  }, [path, params])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [path, JSON.stringify(params ?? null)])
 
   const fetchData = useCallback(async () => {
-    const fullPath = buildPath()
     if (!fullPath) return
 
     // Cancel previous in-flight request
@@ -54,11 +56,21 @@ export function useApi<T>(
     } finally {
       setLoading(false)
     }
-  }, [buildPath])
+  }, [fullPath])
 
   useEffect(() => {
     fetchData()
-    return () => abortRef.current?.abort()
+
+    const handleGlobalRefresh = () => {
+      fetchData()
+    }
+
+    window.addEventListener("app:refresh", handleGlobalRefresh)
+
+    return () => {
+      abortRef.current?.abort()
+      window.removeEventListener("app:refresh", handleGlobalRefresh)
+    }
   }, [fetchData])
 
   return { data, loading, error, refetch: fetchData }

@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional
 
 import bcrypt
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import jwt
 from sqlalchemy.orm import Session
@@ -86,13 +86,13 @@ def decode_access_token(token: str) -> Dict[str, Any]:
     except jwt.ExpiredSignatureError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has expired",
+            detail="El token ha expirado. Por favor, inicie sesión nuevamente.",
             headers={"WWW-Authenticate": "Bearer"},
         )
     except jwt.PyJWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
+            detail="No se pudo validar las credenciales. Token inválido.",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -120,16 +120,18 @@ def authenticate_user(db: Session, username_or_email: str, password: str) -> Opt
 
 def get_optional_current_user(
     token: Optional[str] = Depends(oauth2_scheme),
+    token_query: Optional[str] = Query(None, alias="token"),
     db: Session = Depends(get_db),
 ) -> Optional[User]:
     """
-    Optional dependency: returns the User if a valid Bearer token was provided,
-    or None if no token or an invalid token was passed.
+    Optional dependency: returns the User if a valid Bearer token was provided
+    either via Authorization header or ?token= query parameter, or None if omitted/invalid.
     """
-    if not token:
+    raw_token = token or token_query
+    if not raw_token:
         return None
     try:
-        payload = decode_access_token(token)
+        payload = decode_access_token(raw_token)
         username: str = payload.get("sub")
         if not username:
             return None
@@ -140,26 +142,29 @@ def get_optional_current_user(
 
 def get_current_user(
     token: Optional[str] = Depends(oauth2_scheme),
+    token_query: Optional[str] = Query(None, alias="token"),
     db: Session = Depends(get_db),
 ) -> User:
     """
     FastAPI dependency for protected endpoints.
-    Enforces a valid Bearer JWT token and retrieves the authenticated User.
+    Enforces a valid JWT token via Bearer header or ?token= query parameter (for SSE / WebSockets)
+    and retrieves the authenticated User.
     Raises HTTPException(401) if not authenticated.
     """
-    if not token:
+    raw_token = token or token_query
+    if not raw_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated. Provide a Bearer token in the Authorization header.",
+            detail="No autenticado. Provea un token Bearer en el header Authorization o parámetro ?token=.",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    payload = decode_access_token(token)
+    payload = decode_access_token(raw_token)
     username: Optional[str] = payload.get("sub")
     if username is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token does not contain a valid user identity subject (sub)",
+            detail="El token no contiene una identidad de usuario válida (sub).",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -167,7 +172,7 @@ def get_current_user(
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
+            detail="Usuario no encontrado.",
             headers={"WWW-Authenticate": "Bearer"},
         )
     return user
@@ -182,7 +187,7 @@ def get_current_active_user(
     if not current_user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Inactive user account",
+            detail="Cuenta de usuario inactiva. Contacte al administrador.",
         )
     return current_user
 
@@ -251,14 +256,14 @@ def login_json(
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username/email or password",
+            detail="Nombre de usuario, email o contraseña incorrectos.",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Inactive user account",
+            detail="Cuenta de usuario inactiva. Contacte al administrador.",
         )
 
     expires_seconds = ACCESS_TOKEN_EXPIRE_MINUTES * 60
@@ -296,14 +301,14 @@ def login_oauth2_form(
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
+            detail="Nombre de usuario o contraseña incorrectos.",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Inactive user account",
+            detail="Cuenta de usuario inactiva. Contacte al administrador.",
         )
 
     expires_seconds = ACCESS_TOKEN_EXPIRE_MINUTES * 60

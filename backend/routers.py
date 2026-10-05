@@ -3,11 +3,15 @@ Routers for read-only + search operations on the industrial data models.
 Nodes and Devices are auto-registered by the MQTT worker; endpoints are list/search only.
 MaintenanceRule supports full CRUD.
 """
+import asyncio
+import json
 from typing import List, Optional
+import anyio.to_thread
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy import func, or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
 from models import (
@@ -25,6 +29,8 @@ from models import (
 from schemas import (
     DeviceRead,
     EquipmentRead,
+    MaintenanceAlertRead,
+    MaintenanceAlertUpdate,
     MaintenanceLogCreate,
     MaintenanceLogRead,
     MaintenanceLogUpdate,
@@ -36,7 +42,18 @@ from schemas import (
     TypeEquipmentRead,
 )
 
-router = APIRouter(prefix="/api", tags=["Industrial Data"])
+from auth import get_current_active_user
+from services.alert_broadcaster import alert_broadcaster
+
+router = APIRouter(
+    prefix="/api",
+    tags=["Industrial Data"],
+    dependencies=[Depends(get_current_active_user)],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: {"description": "No autorizado: Token inválido o ausente"},
+        status.HTTP_403_FORBIDDEN: {"description": "Prohibido: No tienes permisos suficientes"},
+    }
+)
 
 
 # ─── Nodes ────────────────────────────────────────────────────────────────────
@@ -175,6 +192,163 @@ def list_maintenance_rules(
     return qs.order_by(MaintenanceRule.id.desc()).offset(offset).limit(limit).all()
 
 
+# ─── Maintenance Alerts ───────────────────────────────────────────────────────
+
+@router.get("/maintenance/alerts", response_model=List[MaintenanceAlertRead])
+def list_maintenance_alerts(
+    status: Optional[AlertStatus] = Query(None, description="Filter by status (PENDING, ACKNOWLEDGED, RESOLVED)"),
+    asset_id: Optional[str] = Query(None, description="Filter by asset identifier"),
+    asset_type: Optional[str] = Query(None, description="Filter by asset type (EQUIPMENT, DEVICE, NODE)"),
+    q: Optional[str] = Query(None, description="Search by asset_id or rule name"),
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+):
+    """List maintenance alerts with options to filter by status, asset, and search query."""
+    qs = db.query(MaintenanceAlert).options(joinedload(MaintenanceAlert.rule))
+    if status:
+        qs = qs.filter(MaintenanceAlert.status == status)
+    if asset_id:
+        qs = qs.filter(MaintenanceAlert.asset_id == asset_id)
+    if asset_type:
+        qs = qs.filter(MaintenanceAlert.asset_type == asset_type)
+    if q:
+        qs = qs.join(MaintenanceAlert.rule).filter(
+            or_(
+                MaintenanceAlert.asset_id.ilike(f"%{q}%"),
+                MaintenanceRule.name.ilike(f"%{q}%"),
+            )
+        )
+    return qs.order_by(MaintenanceAlert.triggered_at.desc()).offset(offset).limit(limit).all()
+
+
+sse_router = APIRouter(prefix="/api", tags=["Industrial SSE"])
+
+
+def _fetch_alerts_json() -> str:
+    """Fetch and serialize current alerts without keeping a long-lived DB session open."""
+    from database import SessionLocal
+    with SessionLocal() as db:
+        alerts = (
+            db.query(MaintenanceAlert)
+            .options(joinedload(MaintenanceAlert.rule))
+            .order_by(MaintenanceAlert.triggered_at.desc())
+            .limit(100)
+            .all()
+        )
+        return json.dumps(
+            [MaintenanceAlertRead.model_validate(a).model_dump(mode="json") for a in alerts]
+        )
+
+
+@sse_router.get("/maintenance/alerts/sse")
+async def stream_maintenance_alerts(
+    request: Request,
+    token: Optional[str] = Query(None),
+):
+    """
+    Server-Sent Events (SSE) stream providing real-time maintenance alert updates.
+    Validates token via query parameter or Authorization header in an isolated DB check,
+    ensuring NO database connections or thread limiter tokens are held during the stream.
+    """
+    raw_token = token
+    if not raw_token:
+        auth_header = request.headers.get("authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            raw_token = auth_header[7:]
+
+    if not raw_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No autenticado para canal SSE. Provea ?token=...",
+        )
+
+    # Validate JWT claims
+    from auth import decode_access_token
+    payload = decode_access_token(raw_token)
+    username = payload.get("sub")
+    if not username:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido")
+
+    # Verify user exists & active in an immediate, closed session
+    from database import SessionLocal
+    from models import User
+    with SessionLocal() as db:
+        user = db.query(User).filter(User.username == username).first()
+        if not user or not user.is_active:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario inactivo o no autorizado")
+
+    queue = alert_broadcaster.subscribe()
+
+    async def event_generator():
+        try:
+            # 1. Send initial alert snapshot
+            initial_data = await asyncio.to_thread(_fetch_alerts_json)
+            yield f"data: {initial_data}\n\n"
+
+            # 2. Stream updates on change + periodic keepalive
+            while True:
+                if await request.is_disconnected():
+                    break
+                try:
+                    await asyncio.wait_for(queue.get(), timeout=15.0)
+                    fresh_data = await asyncio.to_thread(_fetch_alerts_json)
+                    yield f"data: {fresh_data}\n\n"
+                except asyncio.TimeoutError:
+                    yield ": ping\n\n"
+        finally:
+            alert_broadcaster.unsubscribe(queue)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@router.get("/maintenance/alerts/{alert_id}", response_model=MaintenanceAlertRead)
+def get_maintenance_alert(
+    alert_id: int,
+    db: Session = Depends(get_db),
+):
+    """Get a single maintenance alert by ID with its associated rule."""
+    alert = (
+        db.query(MaintenanceAlert)
+        .options(joinedload(MaintenanceAlert.rule))
+        .filter(MaintenanceAlert.id == alert_id)
+        .first()
+    )
+    if not alert:
+        raise HTTPException(status_code=404, detail=f"Maintenance alert {alert_id} not found")
+    return alert
+
+
+@router.patch("/maintenance/alerts/{alert_id}", response_model=MaintenanceAlertRead)
+def update_maintenance_alert_status(
+    alert_id: int,
+    alert_in: MaintenanceAlertUpdate,
+    db: Session = Depends(get_db),
+):
+    """Update status of a maintenance alert (e.g. ACKNOWLEDGED, RESOLVED, PENDING)."""
+    alert = (
+        db.query(MaintenanceAlert)
+        .options(joinedload(MaintenanceAlert.rule))
+        .filter(MaintenanceAlert.id == alert_id)
+        .first()
+    )
+    if not alert:
+        raise HTTPException(status_code=404, detail=f"Maintenance alert {alert_id} not found")
+    alert.status = alert_in.status
+    db.commit()
+    db.refresh(alert)
+    alert_broadcaster.broadcast_change("status_update")
+    return alert
+
+
 # ─── Maintenance Logs ─────────────────────────────────────────────────────────
 
 @router.post(
@@ -189,7 +363,7 @@ def create_maintenance_log(
 ):
     """
     Creates a maintenance log. Automatically takes a snapshot of the asset's meter
-    and resolves any PENDING or ACKNOWLEDGED alerts for that asset.
+    and resolves any PENDING or ACKNOWLEDGED alerts for that asset (or specific alert_id).
     """
     log_data = log_in.model_dump()
     log = MaintenanceLog(**log_data)
@@ -207,7 +381,13 @@ def create_maintenance_log(
         
     db.add(log)
     
-    # 2. Resolve open alerts for this asset
+    # 2. Resolve target alert if alert_id is provided
+    if log.alert_id:
+        target_alert = db.query(MaintenanceAlert).filter(MaintenanceAlert.id == log.alert_id).first()
+        if target_alert:
+            target_alert.status = AlertStatus.RESOLVED
+
+    # Also resolve all open alerts for this asset
     open_alerts = db.query(MaintenanceAlert).filter(
         MaintenanceAlert.asset_type == log.asset_type,
         MaintenanceAlert.asset_id == log.asset_id,
@@ -219,6 +399,7 @@ def create_maintenance_log(
 
     db.commit()
     db.refresh(log)
+    alert_broadcaster.broadcast_change("log_created_resolved")
     return log
 
 @router.get("/maintenance/logs", response_model=List[MaintenanceLogRead])
