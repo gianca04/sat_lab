@@ -871,50 +871,52 @@ export function AlertsPage({ standalone = false }: AlertsPageProps) {
         ) : (
           <>
             {/* Stat Panels */}
-            <div className="gf-stat-grid">
-              <div
-                className="gf-stat"
-                style={{ cursor: "pointer", borderColor: statusFilter === "ALL" ? "#4a5568" : undefined }}
-                onClick={() => setStatusFilter("ALL")}
-                title="Ver todas las alertas"
-              >
-                <div className="gf-stat-label">Total alertas</div>
-                <div className="gf-stat-value">{counts.all}</div>
-              </div>
-              <div
-                className="gf-stat"
-                style={{ cursor: "pointer", borderColor: statusFilter === "PENDING" ? "#5a3034" : undefined }}
-                onClick={() => setStatusFilter("PENDING")}
-                title="Filtrar alertas pendientes"
-              >
-                <div className="gf-stat-label">Alertas pendientes</div>
-                <div className="gf-stat-value" style={{ color: counts.pending > 0 ? "#e57373" : undefined }}>
-                  {counts.pending}
+            {!isEmbedded && (
+              <div className="gf-stat-grid">
+                <div
+                  className="gf-stat"
+                  style={{ cursor: "pointer", borderColor: statusFilter === "ALL" ? "#4a5568" : undefined }}
+                  onClick={() => setStatusFilter("ALL")}
+                  title="Ver todas las alertas"
+                >
+                  <div className="gf-stat-label">Total alertas</div>
+                  <div className="gf-stat-value">{counts.all}</div>
+                </div>
+                <div
+                  className="gf-stat"
+                  style={{ cursor: "pointer", borderColor: statusFilter === "PENDING" ? "#5a3034" : undefined }}
+                  onClick={() => setStatusFilter("PENDING")}
+                  title="Filtrar alertas pendientes"
+                >
+                  <div className="gf-stat-label">Alertas pendientes</div>
+                  <div className="gf-stat-value" style={{ color: counts.pending > 0 ? "#e57373" : undefined }}>
+                    {counts.pending}
+                  </div>
+                </div>
+                <div
+                  className="gf-stat"
+                  style={{ cursor: "pointer", borderColor: statusFilter === "ACKNOWLEDGED" ? "#544622" : undefined }}
+                  onClick={() => setStatusFilter("ACKNOWLEDGED")}
+                  title="Filtrar alertas reconocidas"
+                >
+                  <div className="gf-stat-label">Reconocidas</div>
+                  <div className="gf-stat-value" style={{ color: counts.acknowledged > 0 ? "#d4af37" : undefined }}>
+                    {counts.acknowledged}
+                  </div>
+                </div>
+                <div
+                  className="gf-stat"
+                  style={{ cursor: "pointer", borderColor: statusFilter === "RESOLVED" ? "#2d4432" : undefined }}
+                  onClick={() => setStatusFilter("RESOLVED")}
+                  title="Filtrar alertas resueltas"
+                >
+                  <div className="gf-stat-label">Resueltas</div>
+                  <div className="gf-stat-value" style={{ color: counts.resolved > 0 ? "#81c784" : undefined }}>
+                    {counts.resolved}
+                  </div>
                 </div>
               </div>
-              <div
-                className="gf-stat"
-                style={{ cursor: "pointer", borderColor: statusFilter === "ACKNOWLEDGED" ? "#544622" : undefined }}
-                onClick={() => setStatusFilter("ACKNOWLEDGED")}
-                title="Filtrar alertas reconocidas"
-              >
-                <div className="gf-stat-label">Reconocidas</div>
-                <div className="gf-stat-value" style={{ color: counts.acknowledged > 0 ? "#d4af37" : undefined }}>
-                  {counts.acknowledged}
-                </div>
-              </div>
-              <div
-                className="gf-stat"
-                style={{ cursor: "pointer", borderColor: statusFilter === "RESOLVED" ? "#2d4432" : undefined }}
-                onClick={() => setStatusFilter("RESOLVED")}
-                title="Filtrar alertas resueltas"
-              >
-                <div className="gf-stat-label">Resueltas</div>
-                <div className="gf-stat-value" style={{ color: counts.resolved > 0 ? "#81c784" : undefined }}>
-                  {counts.resolved}
-                </div>
-              </div>
-            </div>
+            )}
 
             {/* Main Panel with Filter Toolbar & Table */}
             <div className="gf-panel" style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
