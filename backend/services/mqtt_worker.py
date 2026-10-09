@@ -64,7 +64,7 @@ class MqttWorker:
 
     def preload_caches(self) -> None:
         """Initializes in-memory caches across all domain services."""
-        logger.info("Initializing domain service caches...")
+        logger.debug("Initializing domain service caches...")
         db: Session = SessionLocal()
         try:
             equipment_service.preload_cache(db)
@@ -103,7 +103,7 @@ class MqttWorker:
             logger.debug(f"ℹ️ [RULES] No active maintenance rules found for {equipment_tag}")
             return
             
-        logger.info(f"⚙️ [RULES] Evaluating {len(rules)} active rules for {equipment_tag}")
+        logger.debug(f"⚙️ [RULES] Evaluating {len(rules)} active rules for {equipment_tag}")
 
         for rule in rules:
             # Calculate the real accumulated metric for this trigger type
@@ -113,7 +113,7 @@ class MqttWorker:
                 trigger_type=rule.trigger_type,
             )
 
-            logger.info(
+            logger.debug(
                 f"🧮 [EVALUATE] Rule #{rule.id} [{rule.name}] | Trigger: {rule.trigger_type.value} | Current: {current_value} | Threshold: {rule.threshold_value}"
             )
 
@@ -125,15 +125,15 @@ class MqttWorker:
             )
             
             if alert:
-                logger.info(f"🚨 [ALERT GENERATED] Rule #{rule.id} triggered alert #{alert.id}")
+                logger.debug(f"🚨 [ALERT GENERATED] Rule #{rule.id} triggered alert #{alert.id}")
             else:
                 logger.debug(f"✅ [RULE OK] Rule #{rule.id} is within limits")
 
     def _on_connect(self, client, userdata, flags, reason_code, properties=None):
         if reason_code == 0:
-            logger.info("Connected to MQTT Broker (%s:%d)", self.broker, self.port)
+            logger.debug("Connected to MQTT Broker (%s:%d)", self.broker, self.port)
             client.subscribe(self.topic_sub, qos=0)
-            logger.info("Subscribed to telemetry topic: '%s'", self.topic_sub)
+            logger.debug("Subscribed to telemetry topic: '%s'", self.topic_sub)
         else:
             logger.error("Failed to connect to MQTT broker, reason_code: %s", reason_code)
 
@@ -148,7 +148,7 @@ class MqttWorker:
         """
         try:
             tokens = msg.topic.split("/")
-            logger.info(f"📥 [MQTT RECV] Topic: {msg.topic} | Payload: {msg.payload.decode('utf-8')}")
+            logger.debug(f"📥 [MQTT RECV] Topic: {msg.topic} | Payload: {msg.payload.decode('utf-8')}")
             
             if len(tokens) < 5:
                 logger.warning(f"⚠️ [MQTT] Topic format invalid. Expected at least 5 levels, got {len(tokens)}")
@@ -172,7 +172,7 @@ class MqttWorker:
             else:
                 event_time = datetime.now(timezone.utc)
 
-            logger.info(f"🔍 [MQTT PARSED] Node: {node_id}, Device: {device_id}, Asset: {equipment_tag}, Metric: {metric_name}, Value: {value}")
+            logger.debug(f"🔍 [MQTT PARSED] Node: {node_id}, Device: {device_id}, Asset: {equipment_tag}, Metric: {metric_name}, Value: {value}")
 
             # Process in thread-safe DB session
             db: Session = SessionLocal()
@@ -192,7 +192,7 @@ class MqttWorker:
                 )
 
                 if status_entry:
-                    logger.info(f"🔄 [STATE TRANSITION] {equipment_tag} changed state to {status_entry.status.value}")
+                    logger.debug(f"🔄 [STATE TRANSITION] {equipment_tag} changed state to {status_entry.status.value}")
                 else:
                     logger.debug(f"ℹ️ [NO TRANSITION] {equipment_tag} state unchanged.")
 
@@ -215,12 +215,12 @@ class MqttWorker:
             return
 
         self.preload_caches()
-        logger.info("Starting MQTT background worker...")
+        logger.debug("Starting MQTT background worker...")
         try:
             self.client.connect(self.broker, self.port, keepalive=60)
             self.client.loop_start()
             self._is_running = True
-            logger.info("MQTT Worker started successfully.")
+            logger.debug("MQTT Worker started successfully.")
         except Exception as e:
             logger.error("Could not start MQTT Worker: %s", e)
 
@@ -228,7 +228,7 @@ class MqttWorker:
         """Stops the MQTT worker."""
         if not self._is_running:
             return
-        logger.info("Stopping MQTT Worker...")
+        logger.debug("Stopping MQTT Worker...")
         try:
             self.client.loop_stop()
             self.client.disconnect()
@@ -236,18 +236,18 @@ class MqttWorker:
             logger.warning("Error during MQTT Worker stop: %s", e)
         finally:
             self._is_running = False
-            logger.info("MQTT Worker stopped.")
+            logger.debug("MQTT Worker stopped.")
 
     def run_forever(self) -> None:
         """Runs the MQTT worker synchronously (blocking mode for standalone CLI daemon)."""
         self.preload_caches()
-        logger.info("Connecting to MQTT Broker in standalone daemon mode...")
+        logger.debug("Connecting to MQTT Broker in standalone daemon mode...")
         self.client.connect(self.broker, self.port, keepalive=60)
         self._is_running = True
         try:
             self.client.loop_forever()
         except KeyboardInterrupt:
-            logger.info("MQTT Worker interrupted by user. Exiting...")
+            logger.debug("MQTT Worker interrupted by user. Exiting...")
         finally:
             self.stop()
 
@@ -257,5 +257,5 @@ mqtt_worker = MqttWorker()
 
 
 if __name__ == "__main__":
-    logger.info("Starting standalone Industrial MQTT Worker...")
+    logger.debug("Starting standalone Industrial MQTT Worker...")
     mqtt_worker.run_forever()

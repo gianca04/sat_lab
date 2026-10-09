@@ -37,7 +37,7 @@ class EquipmentService:
         Loads existing asset tags and category catalogs from PostgreSQL into memory.
         Enables O(1) existence checks with zero query latency during high-frequency ingestion.
         """
-        logger.info("Pre-loading equipment and asset topology cache from database...")
+        logger.debug("Pre-loading equipment and asset topology cache from database...")
         try:
             # 1. Type catalog map (e.g. {"SENSOR": 5, "MOTOR": 1, ...})
             types = db.execute(select(TypeEquipment.name, TypeEquipment.id)).all()
@@ -64,7 +64,7 @@ class EquipmentService:
                 self._known_equipments = {r[0] for r in equipments}
                 self._equipment_types = {r[0]: (r[1].upper() if r[1] else None) for r in equipments}
 
-            logger.info(
+            logger.debug(
                 "Equipment cache ready: %d nodes, %d devices, %d equipments, %d type categories.",
                 len(self._known_nodes),
                 len(self._known_devices),
@@ -188,7 +188,7 @@ class EquipmentService:
                 self._known_equipments.add(equipment_tag)
                 self._equipment_types[equipment_tag] = type_name
 
-            logger.info(
+            logger.debug(
                 "Auto-registered new Equipment: '%s' (Device: '%s', Type: %s)",
                 equipment_tag,
                 device_id,

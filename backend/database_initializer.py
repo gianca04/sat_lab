@@ -110,22 +110,22 @@ class DatabaseInitializer:
     @classmethod
     def create_tables(cls, target_engine: Engine = engine) -> None:
         """Creates all SQLAlchemy declarative model tables and enums if they do not exist."""
-        logger.info("Verifying and creating database tables...")
+        logger.debug("Verifying and creating database tables...")
         Base.metadata.create_all(bind=target_engine)
-        logger.info("Tables checked/created successfully.")
+        logger.debug("Tables checked/created successfully.")
 
     @classmethod
     def create_routines(cls, target_engine: Engine = engine) -> None:
         """Creates custom PostgreSQL functions, triggers, and stored procedures."""
         if target_engine.dialect.name != "postgresql":
-            logger.info("Skipping stored function creation: engine dialect is '%s'.", target_engine.dialect.name)
+            logger.debug("Skipping stored function creation: engine dialect is '%s'.", target_engine.dialect.name)
             return
 
-        logger.info("Registering PostgreSQL stored procedures and triggers...")
+        logger.debug("Registering PostgreSQL stored procedures and triggers...")
         with target_engine.begin() as connection:
             connection.execute(text(cls.SPARKPLUG_EVENT_ROUTINE_SQL))
             connection.execute(text(cls.TRIGGER_AUTO_PROVISION_SQL))
-        logger.info("Functions and triggers created/updated successfully.")
+        logger.debug("Functions and triggers created/updated successfully.")
 
     @classmethod
     def seed_catalogs(cls, target_engine: Engine = engine) -> None:
@@ -135,7 +135,7 @@ class DatabaseInitializer:
         2. Adds optional columns (description, parent_tag) if not present.
         3. Populates type_equipments with standard industrial categories.
         """
-        logger.info("Verifying and seeding industrial catalogs...")
+        logger.debug("Verifying and seeding industrial catalogs...")
 
         # 1. Update PostgreSQL Enums & Schema columns if dialect is PostgreSQL
         if target_engine.dialect.name == "postgresql":
@@ -191,7 +191,7 @@ class DatabaseInitializer:
                         {"name": name, "desc": desc},
                     )
 
-        logger.info("Catalogs verified and seeded successfully.")
+        logger.debug("Catalogs verified and seeded successfully.")
 
     @classmethod
     def init_database(cls, target_engine: Engine = engine) -> None:

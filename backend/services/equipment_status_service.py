@@ -37,7 +37,7 @@ class EquipmentStatusService:
         Loads the most recent operating status for each equipment from PostgreSQL into memory.
         Establishes the baseline state so subsequent incoming telemetry only triggers writes on changes.
         """
-        logger.info("Pre-loading last recorded equipment operating statuses from database...")
+        logger.debug("Pre-loading last recorded equipment operating statuses from database...")
         try:
             last_statuses = db.execute(text("""
                 SELECT DISTINCT ON (equipment_id) equipment_id, status
@@ -50,7 +50,7 @@ class EquipmentStatusService:
                     r[0]: EquipmentOperatingStatus(r[1]) for r in last_statuses
                 }
 
-            logger.info(
+            logger.debug(
                 "Status transition baseline ready: %d equipments with previous state.",
                 len(self._equipment_last_status),
             )
@@ -116,7 +116,7 @@ class EquipmentStatusService:
             return None
 
         # 5. State transition detected! Record event
-        logger.info(
+        logger.debug(
             "State transition on '%s': %s -> %s (val=%s, time=%s)",
             equipment_tag,
             last_status.value if last_status else "INITIAL",

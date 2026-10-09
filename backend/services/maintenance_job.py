@@ -33,7 +33,7 @@ class MaintenanceJob:
         self._task = None
 
     async def _run_loop(self):
-        logger.info(f"Starting periodic maintenance evaluator job (interval={self.interval_seconds}s)")
+        logger.debug(f"Starting periodic maintenance evaluator job (interval={self.interval_seconds}s)")
         while self._is_running:
             try:
                 self.evaluate_all_rules()

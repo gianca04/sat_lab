@@ -46,7 +46,7 @@ class NotificationService:
             f"{'Por favor, verifique el estado físico del equipo en campo.' if request_photo else 'Operación normal restablecida.'}"
         )
 
-        logger.info(f"Lifecycle Event: {event.status.value} - {target_name}")
+        logger.debug(f"Lifecycle Event: {event.status.value} - {target_name}")
 
         try:
             import json
@@ -104,7 +104,7 @@ class NotificationService:
             
             topic = os.getenv("MQTT_TOPIC_NOTIFICATIONS", "lab_sat/notifications")
             mqtt_worker.client.publish(topic, json.dumps(payload), qos=1)
-            logger.info(f"Notificación de alerta enviada al broker MQTT: {topic}")
+            logger.debug(f"Notificación de alerta enviada al broker MQTT: {topic}")
         except Exception as e:
             logger.error(f"Error publicando alerta a MQTT: {e}")
 
@@ -118,4 +118,4 @@ class NotificationService:
             f"registered for {log_entry.asset_type.value} '{log_entry.asset_id}' "
             f"by technician '{log_entry.technician or 'Unassigned'}'"
         )
-        logger.info(message)
+        logger.debug(message)
