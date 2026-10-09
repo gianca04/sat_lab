@@ -21,7 +21,7 @@ class MaintenanceService:
     def generate_maintenance_alert(
         db: Session,
         rule: MaintenanceRule,
-        current_value: int,
+        current_value: float,
         notify: bool = True,
     ) -> Optional[MaintenanceAlert]:
         """
@@ -34,7 +34,7 @@ class MaintenanceService:
         if not rule.is_active:
             return None
 
-        warning_threshold = int(rule.threshold_value * 0.85)
+        warning_threshold = rule.threshold_value * 0.85
 
         # Si aún no llegamos ni al 85%, no hacemos nada
         if current_value < warning_threshold:

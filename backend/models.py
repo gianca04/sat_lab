@@ -10,6 +10,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    Float,
     String,
     Text,
 )
@@ -291,7 +292,7 @@ class AssetMeter(Base):
     )
     asset_id: Mapped[str] = mapped_column(String(100), nullable=False)
     
-    total_hours: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
+    total_hours: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     total_cycles: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
     total_startups: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
     
@@ -329,7 +330,7 @@ class MaintenanceRule(Base):
         Enum(TriggerType, name="trigger_type_enum"),
         nullable=False,
     )
-    threshold_value: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    threshold_value: Mapped[float] = mapped_column(Float, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -372,8 +373,8 @@ class MaintenanceAlert(Base):
         nullable=False,
     )
     asset_id: Mapped[str] = mapped_column(String(100), nullable=False)
-    calculated_value: Mapped[int] = mapped_column(BigInteger, nullable=False)
-    threshold_value: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    calculated_value: Mapped[float] = mapped_column(Float, nullable=False)
+    threshold_value: Mapped[float] = mapped_column(Float, nullable=False)
     status: Mapped[AlertStatus] = mapped_column(
         Enum(AlertStatus, name="alert_status_enum"),
         default=AlertStatus.PENDING,
@@ -434,7 +435,7 @@ class MaintenanceLog(Base):
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     
     # Odometers snapshot at the exact time of maintenance execution
-    hours_at_execution: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    hours_at_execution: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     cycles_at_execution: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
     startups_at_execution: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
     

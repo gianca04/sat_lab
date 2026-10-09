@@ -170,7 +170,7 @@ class MaintenanceMetricsCalculator:
         return days
 
     @classmethod
-    def get_current_value(cls, db: Session, equipment_id: str, trigger_type: TriggerType) -> int:
+    def get_current_value(cls, db: Session, equipment_id: str, trigger_type: TriggerType) -> float:
         """
         Main entry point: returns the integer metric that should be compared against
         a MaintenanceRule threshold_value for the given trigger_type.
@@ -179,11 +179,11 @@ class MaintenanceMetricsCalculator:
         TriggerType.CYCLES       → number of motor startups / valve cycles
         TriggerType.CALENDAR_DAYS → days since last maintenance or first status
         """
-        current_absolute = 0
+        current_absolute = 0.0
         
         # 1. Obtener valor absoluto actual (Odómetro global)
         if trigger_type == TriggerType.HOURS:
-            current_absolute = int(cls.accumulated_hours(db, equipment_id))
+            current_absolute = cls.accumulated_hours(db, equipment_id)
         elif trigger_type in (TriggerType.CYCLES, TriggerType.STARTUPS):
             current_absolute = cls.startup_cycles(db, equipment_id)
         elif trigger_type == TriggerType.CALENDAR_DAYS:
@@ -221,8 +221,8 @@ class MaintenanceMetricsCalculator:
             return current_absolute
             
         if trigger_type == TriggerType.HOURS:
-            last_snapshot = last_log.hours_at_execution or 0
-            return max(0, current_absolute - last_snapshot)
+            last_snapshot = last_log.hours_at_execution or 0.0
+            return max(0.0, current_absolute - last_snapshot)
             
         elif trigger_type in (TriggerType.CYCLES, TriggerType.STARTUPS):
             last_snapshot = last_log.cycles_at_execution or last_log.startups_at_execution or 0

@@ -7,58 +7,76 @@
 
 @theme {
   /* --- Canvas (App background layers) --- */
-  --color-bg-canvas:        #111217;   /* grafana: background.canvas */
-  --color-bg-primary:       #181b1f;   /* grafana: background.primary — panels, sidebar */
-  --color-bg-secondary:     #1e2228;   /* grafana: background.secondary — table header, inputs */
-  --color-bg-elevated:      #212733;   /* grafana: background elevated hover on list items */
+  --color-bg-canvas: #111217;
+  /* grafana: background.canvas */
+  --color-bg-primary: #181b1f;
+  /* grafana: background.primary — panels, sidebar */
+  --color-bg-secondary: #1e2228;
+  /* grafana: background.secondary — table header, inputs */
+  --color-bg-elevated: #212733;
+  /* grafana: background elevated hover on list items */
 
   /* --- Borders --- */
-  --color-border-weak:      #1e2228;   /* grafana: border.weak */
-  --color-border-medium:    #22252b;   /* grafana: border.medium — default */
-  --color-border-strong:    #2c3235;   /* grafana: border.strong — focused inputs */
+  --color-border-weak: #1e2228;
+  /* grafana: border.weak */
+  --color-border-medium: #22252b;
+  /* grafana: border.medium — default */
+  --color-border-strong: #2c3235;
+  /* grafana: border.strong — focused inputs */
 
   /* --- Text --- */
-  --color-text-primary:     #d8d9da;   /* grafana: text.primary */
-  --color-text-secondary:   #8e8e93;   /* grafana: text.secondary — labels, muted */
-  --color-text-disabled:    #52545b;   /* grafana: text.disabled */
-  --color-text-link:        #6e9fff;   /* grafana: text.link */
+  --color-text-primary: #d8d9da;
+  /* grafana: text.primary */
+  --color-text-secondary: #8e8e93;
+  /* grafana: text.secondary — labels, muted */
+  --color-text-disabled: #52545b;
+  /* grafana: text.disabled */
+  --color-text-link: #6e9fff;
+  /* grafana: text.link */
 
   /* --- Interactive / Actions --- */
-  --color-primary:          #3274d9;   /* grafana: primary.main — buttons, highlights */
-  --color-primary-hover:    #2761b8;   /* grafana: primary.shade */
-  --color-primary-fg:       #ffffff;
+  --color-primary: #3274d9;
+  /* grafana: primary.main — buttons, highlights */
+  --color-primary-hover: #2761b8;
+  /* grafana: primary.shade */
+  --color-primary-fg: #ffffff;
 
   /* --- Status / Alert colors (exact Grafana values) --- */
-  --color-success:          #73bf69;   /* grafana: success.main */
-  --color-warning:          #fade2a;   /* grafana: warning.main */
-  --color-error:            #f2495c;   /* grafana: error.main */
-  --color-info:             #5794f2;   /* grafana: info.main */
-  --color-orange:           #ff7800;   /* Grafana logo orange */
+  --color-success: #73bf69;
+  /* grafana: success.main */
+  --color-warning: #fade2a;
+  /* grafana: warning.main */
+  --color-error: #f2495c;
+  /* grafana: error.main */
+  --color-info: #5794f2;
+  /* grafana: info.main */
+  --color-orange: #ff7800;
+  /* Grafana logo orange */
 
   /* --- shadcn compat aliases --- */
-  --color-background:       #111217;
-  --color-foreground:       #d8d9da;
-  --color-card:             #181b1f;
-  --color-card-foreground:  #d8d9da;
-  --color-popover:          #1e2228;
+  --color-background: #111217;
+  --color-foreground: #d8d9da;
+  --color-card: #181b1f;
+  --color-card-foreground: #d8d9da;
+  --color-popover: #1e2228;
   --color-popover-foreground: #d8d9da;
-  --color-muted:            #22252b;
+  --color-muted: #22252b;
   --color-muted-foreground: #8e8e93;
-  --color-accent:           #1e2228;
+  --color-accent: #1e2228;
   --color-accent-foreground: #d8d9da;
-  --color-secondary:        #22252b;
+  --color-secondary: #22252b;
   --color-secondary-foreground: #d8d9da;
-  --color-border:           #22252b;
-  --color-input:            #1e2228;
-  --color-ring:             #3274d9;
-  --color-destructive:      #f2495c;
+  --color-border: #22252b;
+  --color-input: #1e2228;
+  --color-ring: #3274d9;
+  --color-destructive: #f2495c;
   --color-destructive-foreground: #ffffff;
   --color-primary-foreground: #ffffff;
 
   /* --- Grafana radii (very small — crisp, industrial) --- */
-  --radius-sm:  1px;
-  --radius-md:  2px;
-  --radius-lg:  4px;
+  --radius-sm: 1px;
+  --radius-md: 2px;
+  --radius-lg: 4px;
 
   /* --- Grafana Font Stack (Inter, same as Grafana OSS) --- */
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -76,14 +94,18 @@
 }
 
 html {
-  font-size: 13px;   /* Grafana base: 13px (not 16px) */
-  line-height: 1.45; /* Grafana lineHeight.xs equivalent */
+  font-size: 16px;
+  /* Grafana base: 13px (not 16px) */
+  line-height: 1.45;
+  /* Grafana lineHeight.xs equivalent */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
   width: 100%;
   margin: 0;
@@ -106,15 +128,18 @@ body {
   width: 8px;
   height: 8px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   background-color: #22252b;
   border-radius: 4px;
   border: 2px solid transparent;
   background-clip: content-box;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background-color: #2c3235;
 }
@@ -886,7 +911,8 @@ body {
 
 .gf-page-tab.active {
   color: #ffffff;
-  border-bottom-color: #ff7800; /* Grafana signature accent orange */
+  border-bottom-color: #ff7800;
+  /* Grafana signature accent orange */
   font-weight: 600;
 }
 

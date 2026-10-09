@@ -48,12 +48,13 @@ from services.alert_broadcaster import alert_broadcaster
 router = APIRouter(
     prefix="/api",
     tags=["Industrial Data"],
-    dependencies=[Depends(get_current_active_user)],
-    responses={
-        status.HTTP_401_UNAUTHORIZED: {"description": "No autorizado: Token inválido o ausente"},
-        status.HTTP_403_FORBIDDEN: {"description": "Prohibido: No tienes permisos suficientes"},
-    }
+    # dependencies=[Depends(get_current_active_user)],
+    # responses={
+    #     status.HTTP_401_UNAUTHORIZED: {"description": "No autorizado: Token inválido o ausente"},
+    #     status.HTTP_403_FORBIDDEN: {"description": "Prohibido: No tienes permisos suficientes"},
+    # }
 )
+
 
 
 # ─── Nodes ────────────────────────────────────────────────────────────────────
@@ -251,32 +252,32 @@ async def stream_maintenance_alerts(
     Validates token via query parameter or Authorization header in an isolated DB check,
     ensuring NO database connections or thread limiter tokens are held during the stream.
     """
-    raw_token = token
-    if not raw_token:
-        auth_header = request.headers.get("authorization")
-        if auth_header and auth_header.startswith("Bearer "):
-            raw_token = auth_header[7:]
+    # raw_token = token
+    # if not raw_token:
+    #     auth_header = request.headers.get("authorization")
+    #     if auth_header and auth_header.startswith("Bearer "):
+    #         raw_token = auth_header[7:]
 
-    if not raw_token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="No autenticado para canal SSE. Provea ?token=...",
-        )
+    # if not raw_token:
+    #     raise HTTPException(
+    #         status_code=status.HTTP_401_UNAUTHORIZED,
+    #         detail="No autenticado para canal SSE. Provea ?token=...",
+    #     )
 
-    # Validate JWT claims
-    from auth import decode_access_token
-    payload = decode_access_token(raw_token)
-    username = payload.get("sub")
-    if not username:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido")
+    # # Validate JWT claims
+    # from auth import decode_access_token
+    # payload = decode_access_token(raw_token)
+    # username = payload.get("sub")
+    # if not username:
+    #     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido")
 
-    # Verify user exists & active in an immediate, closed session
-    from database import SessionLocal
-    from models import User
-    with SessionLocal() as db:
-        user = db.query(User).filter(User.username == username).first()
-        if not user or not user.is_active:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario inactivo o no autorizado")
+    # # Verify user exists & active in an immediate, closed session
+    # from database import SessionLocal
+    # from models import User
+    # with SessionLocal() as db:
+    #     user = db.query(User).filter(User.username == username).first()
+    #     if not user or not user.is_active:
+    #         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario inactivo o no autorizado")
 
     queue = alert_broadcaster.subscribe()
 

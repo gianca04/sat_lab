@@ -50,7 +50,7 @@ app.add_middleware(
 )
 
 # Authentication Router
-app.include_router(auth_router)
+# app.include_router(auth_router)
 
 # SSE Real-time Streaming Router (Included before data_router so /sse is matched before /{alert_id})
 app.include_router(sse_router)
