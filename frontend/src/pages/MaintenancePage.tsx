@@ -256,10 +256,16 @@ function RuleFormPanel({ initial, onSave, onCancel }: RuleFormPanelProps) {
                 className="gf-input"
                 type="number"
                 min={0}
+                step={form.trigger_type === "HOURS" ? "any" : "1"}
                 value={form.threshold_value}
-                placeholder="Ej: 500"
+                placeholder={form.trigger_type === "HOURS" ? "Ej: 2.5 (2 horas y media)" : "Ej: 500"}
                 onChange={(e) => set("threshold_value", e.target.value === "" ? "" : Number(e.target.value))}
               />
+              {form.trigger_type === "HOURS" && (
+                <div style={{ fontSize: 11, color: "#52545b", marginTop: 3 }}>
+                  Usa formato decimal (Ej: 2.5 para 2 horas y media). No uses formato de reloj (HH:MM).
+                </div>
+              )}
             </div>
 
             {/* is_active */}
